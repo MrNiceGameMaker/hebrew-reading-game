@@ -24,6 +24,53 @@
     #status, #fullscreen, #retry { color: #fff; font: bold 1rem system-ui, sans-serif; }
     #status { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 24px; }
     #status[hidden] { display: none; }
+    #loading-avatar {
+      justify-self: center;
+      width: 112px;
+      height: 112px;
+      padding: 20px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #4c3575 0%, #241b4f 57%, transparent 72%);
+      animation: greeting 1.5s ease-in-out infinite;
+    }
+    @keyframes greeting { 50% { transform: translateY(-10px) rotate(5deg); } }
+    @media (prefers-reduced-motion: reduce) { #loading-avatar { animation: none; } }
+    #player-name-dialog {
+      box-sizing: border-box;
+      width: min(440px, calc(100% - 32px));
+      max-height: calc(100% - 32px);
+      padding: 20px;
+      border: 1px solid #9d8ce0;
+      border-radius: 20px;
+      background: #1e1742;
+      color: #f7f6ff;
+      font: 700 1.15rem system-ui, sans-serif;
+    }
+    #player-name-dialog::backdrop { background: #09071cbd; }
+    #player-name-form { display: grid; gap: 14px; }
+    #player-name-input {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 11px 13px;
+      border: 1px solid #9d8ce0;
+      border-radius: 10px;
+      color: #f7f6ff;
+      background: #100d2c;
+      font: inherit;
+    }
+    #player-name-actions { display: flex; gap: 10px; }
+    #player-name-actions button {
+      min-height: 44px;
+      flex: 1;
+      border: 1px solid #9d8ce0;
+      border-radius: 10px;
+      padding: 8px;
+      color: #f7f6ff;
+      background: #352b61;
+      font: inherit;
+      cursor: pointer;
+    }
+    #player-name-actions button[type=submit] { color: #132737; background: #7fffdd; }
     #retry {
       justify-self: center;
       min-height: 48px;
@@ -60,12 +107,23 @@
     <div id="stage">
       <canvas id="game" aria-label="משחקי אותיות" tabindex="-1"></canvas>
       <div id="status">
+        <img id="loading-avatar" width="112" height="112" alt="">
         <p id="loading-message" role="status">טוענים את המשחק…</p>
         <button id="retry" hidden>נסו שוב</button>
       </div>
       <button id="fullscreen" aria-label="מסך מלא" title="מסך מלא" hidden>⛶</button>
     </div>
   </div>
+  <dialog id="player-name-dialog" aria-labelledby="player-name-label">
+    <form id="player-name-form">
+      <label id="player-name-label" for="player-name-input">שם הילד או הילדה</label>
+      <input id="player-name-input" type="text" dir="auto" maxlength="24" autocomplete="off" autofocus>
+      <div id="player-name-actions">
+        <button type="submit">אישור</button>
+        <button type="button" id="cancel-player-name">ביטול</button>
+      </div>
+    </form>
+  </dialog>
   <script>
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
@@ -76,6 +134,36 @@
     const touchScreen = matchMedia('(pointer: coarse)');
     const displayedCanvasBounds = canvas.getBoundingClientRect.bind(canvas);
     let rotated = false;
+    let loadingAvatar = '1f407';
+    try {
+      const savedAvatar = localStorage.getItem('LearnToRead.LoadingAvatar');
+      if (['1f407', '1f42c', '1f98a', '1f989', '1f438', '1f401'].includes(savedAvatar)) loadingAvatar = savedAvatar;
+    } catch (error) {
+      // A new game or a browser that blocks storage uses the rabbit.
+    }
+    document.getElementById('loading-avatar').src = 'TemplateData/Avatars/' + loadingAvatar + '.png';
+
+    const nameDialog = document.getElementById('player-name-dialog');
+    const nameInput = document.getElementById('player-name-input');
+    let nameTarget;
+    let unityInstance;
+    window.learnToReadEditPlayerName = (target, value) => {
+      nameTarget = target;
+      nameInput.value = value;
+      nameDialog.showModal();
+      nameInput.focus();
+    };
+    document.getElementById('player-name-form').addEventListener('submit', event => {
+      event.preventDefault();
+      const value = nameInput.value;
+      nameDialog.close();
+      unityInstance.SendMessage(nameTarget, 'SetPlayerName', value);
+    });
+    document.getElementById('cancel-player-name').onclick = () => nameDialog.close();
+    nameDialog.addEventListener('close', () => {
+      nameInput.value = '';
+      canvas.focus();
+    });
 
     function fitStage() {
       rotated = touchScreen.matches && innerHeight > innerWidth;
@@ -126,7 +214,7 @@
     }
 
     const build = 'Build/';
-    const version = "1.7";
+    const version = "1.8";
     const assetUrl = file => build + file + '?v=' + encodeURIComponent(version);
     const config = {
       dataUrl: assetUrl('Web.data.unityweb'),
@@ -150,7 +238,8 @@
     loader.onload = () => {
       createUnityInstance(canvas, config, progress => {
         statusMessage.textContent = 'טוענים את המשחק… ' + Math.round(progress * 100) + '%';
-      }).then(() => {
+      }).then(instance => {
+        unityInstance = instance;
         statusPanel.hidden = true;
         fullscreen.hidden = !document.fullscreenEnabled;
         fullscreen.onclick = () => document.documentElement.requestFullscreen().catch(console.warn);
