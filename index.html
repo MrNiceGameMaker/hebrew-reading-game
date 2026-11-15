@@ -3,6 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0b22">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="TemplateData/icon-180.png">
+  <link rel="icon" href="TemplateData/icon-192.png">
   <title>משחקי אותיות</title>
   <style>
     html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #0b0b22; }
@@ -35,6 +41,9 @@
       left: max(8px, env(safe-area-inset-top));
     }
     :fullscreen #fullscreen { display: none; }
+    @media (display-mode: standalone), (display-mode: fullscreen) {
+      #fullscreen { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -103,18 +112,20 @@
     }
 
     const build = 'Build/';
+    const version = "1.1";
+    const assetUrl = file => build + file + '?v=' + encodeURIComponent(version);
     const config = {
-      dataUrl: build + 'Web.data.unityweb',
-      frameworkUrl: build + 'Web.framework.js.unityweb',
-      codeUrl: build + 'Web.wasm.unityweb',
+      dataUrl: assetUrl('Web.data.unityweb'),
+      frameworkUrl: assetUrl('Web.framework.js.unityweb'),
+      codeUrl: assetUrl('Web.wasm.unityweb'),
       streamingAssetsUrl: 'StreamingAssets',
       companyName: "LearnToRead",
       productName: "LearnToRead",
-      productVersion: "1.0",
+      productVersion: version,
       devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2)
     };
     const loader = document.createElement('script');
-    loader.src = build + 'Web.loader.js';
+    loader.src = assetUrl('Web.loader.js');
     const showError = error => {
       statusMessage.textContent = 'המשחק לא נטען. נסו לרענן את הדף או לפתוח אותו בדפדפן מעודכן.';
       console.error(error);
