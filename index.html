@@ -214,7 +214,18 @@
     }
 
     const build = 'Build/';
-    const version = "1.16";
+    const version = "1.17";
+    const versionKey = 'LearnToRead.WebVersion';
+    let loadingTitle = 'טוענים את המשחק…';
+    try {
+      const previousVersion = localStorage.getItem(versionKey);
+      const playedBeforeVersionTracking = !previousVersion && localStorage.getItem('LearnToRead.LoadingAvatar');
+      if ((previousVersion && previousVersion !== version) || playedBeforeVersionTracking)
+        loadingTitle = 'מוריד עדכון…';
+    } catch (error) {
+      // A browser that blocks storage can still open the game.
+    }
+    statusMessage.textContent = loadingTitle;
     const assetUrl = file => build + file + '?v=' + encodeURIComponent(version);
     const config = {
       dataUrl: assetUrl('Web.data.unityweb'),
@@ -224,6 +235,7 @@
       companyName: "LearnToRead",
       productName: "LearnToRead",
       productVersion: version,
+      cacheControl: url => /\.(?:bundle|unityweb)(?:\?|$)/.test(url) ? 'immutable' : 'no-store',
       devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2)
     };
     const loader = document.createElement('script');
@@ -237,9 +249,10 @@
     loader.onerror = showError;
     loader.onload = () => {
       createUnityInstance(canvas, config, progress => {
-        statusMessage.textContent = 'טוענים את המשחק… ' + Math.round(progress * 100) + '%';
+        statusMessage.textContent = loadingTitle + ' ' + Math.round(progress * 100) + '%';
       }).then(instance => {
         unityInstance = instance;
+        try { localStorage.setItem(versionKey, version); } catch (error) { /* Storage is optional. */ }
         statusPanel.hidden = true;
         fullscreen.hidden = !document.fullscreenEnabled;
         fullscreen.onclick = () => document.documentElement.requestFullscreen().catch(console.warn);
