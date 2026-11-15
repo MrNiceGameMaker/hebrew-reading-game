@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b0b22">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="manifest" href="manifest.webmanifest?v=home">
   <link rel="apple-touch-icon" href="TemplateData/icon-180.png">
   <link rel="icon" href="TemplateData/icon-192.png">
   <title>משחקי אותיות</title>
@@ -21,9 +21,18 @@
       transform: translate(-50%, -50%) rotate(90deg);
     }
     canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-    #status, #fullscreen { color: #fff; font: bold 1rem system-ui, sans-serif; }
-    #status { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+    #status, #fullscreen, #retry { color: #fff; font: bold 1rem system-ui, sans-serif; }
+    #status { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 24px; }
     #status[hidden] { display: none; }
+    #retry {
+      justify-self: center;
+      min-height: 48px;
+      padding: 8px 20px;
+      border: 1px solid #9d8ce0;
+      border-radius: 12px;
+      background: #272046;
+      cursor: pointer;
+    }
     #fullscreen {
       position: absolute;
       bottom: max(8px, env(safe-area-inset-bottom));
@@ -50,14 +59,19 @@
   <div id="viewport">
     <div id="stage">
       <canvas id="game" aria-label="משחקי אותיות" tabindex="-1"></canvas>
-      <div id="status" role="status">טוענים את המשחק…</div>
+      <div id="status">
+        <p id="loading-message" role="status">טוענים את המשחק…</p>
+        <button id="retry" hidden>נסו שוב</button>
+      </div>
       <button id="fullscreen" aria-label="מסך מלא" title="מסך מלא" hidden>⛶</button>
     </div>
   </div>
   <script>
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
-    const statusMessage = document.getElementById('status');
+    const statusPanel = document.getElementById('status');
+    const statusMessage = document.getElementById('loading-message');
+    const retry = document.getElementById('retry');
     const fullscreen = document.getElementById('fullscreen');
     const touchScreen = matchMedia('(pointer: coarse)');
     const displayedCanvasBounds = canvas.getBoundingClientRect.bind(canvas);
@@ -127,15 +141,17 @@
     const loader = document.createElement('script');
     loader.src = assetUrl('Web.loader.js');
     const showError = error => {
-      statusMessage.textContent = 'המשחק לא נטען. נסו לרענן את הדף או לפתוח אותו בדפדפן מעודכן.';
+      statusMessage.textContent = 'המשחק לא נטען. בדקו את החיבור לאינטרנט ונסו שוב.';
+      retry.hidden = false;
       console.error(error);
     };
+    retry.onclick = () => location.reload();
     loader.onerror = showError;
     loader.onload = () => {
       createUnityInstance(canvas, config, progress => {
         statusMessage.textContent = 'טוענים את המשחק… ' + Math.round(progress * 100) + '%';
       }).then(() => {
-        statusMessage.hidden = true;
+        statusPanel.hidden = true;
         fullscreen.hidden = !document.fullscreenEnabled;
         fullscreen.onclick = () => document.documentElement.requestFullscreen().catch(console.warn);
       }).catch(showError);

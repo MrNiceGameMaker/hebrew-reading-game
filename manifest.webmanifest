@@ -4,11 +4,9 @@
   "short_name": "אותיות",
   "lang": "he",
   "dir": "rtl",
-  "start_url": "./",
+  "start_url": "./?launch=home",
   "scope": "./",
   "display": "standalone",
-  "display_override": ["fullscreen", "standalone"],
-  "orientation": "landscape",
   "background_color": "#0b0b22",
   "theme_color": "#0b0b22",
   "icons": [
