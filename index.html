@@ -137,7 +137,7 @@
     let loadingAvatar = '1f407';
     try {
       const savedAvatar = localStorage.getItem('LearnToRead.LoadingAvatar');
-      if (['1f407', '1f42c', '1f98a', '1f989', '1f438', '1f401'].includes(savedAvatar)) loadingAvatar = savedAvatar;
+      if (['1f407', '1f42c', '1f98a', '1f989', '1f438', '1f401', '1f43c'].includes(savedAvatar)) loadingAvatar = savedAvatar;
     } catch (error) {
       // A new game or a browser that blocks storage uses the rabbit.
     }
@@ -214,7 +214,7 @@
     }
 
     const build = 'Build/';
-    const version = "1.12";
+    const version = "1.13";
     const assetUrl = file => build + file + '?v=' + encodeURIComponent(version);
     const config = {
       dataUrl: assetUrl('Web.data.unityweb'),
