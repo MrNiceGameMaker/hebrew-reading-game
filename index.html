@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>משחקי אותיות</title>
+  <style>
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #0b0b22; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    #status, #fullscreen { color: #fff; font: bold 1rem system-ui, sans-serif; }
+    #status { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; }
+    #status[hidden] { display: none; }
+    #fullscreen {
+      position: fixed;
+      bottom: max(8px, env(safe-area-inset-bottom));
+      left: max(8px, env(safe-area-inset-left));
+      width: 44px;
+      height: 44px;
+      border: 1px solid #9d8ce0;
+      border-radius: 12px;
+      background: #272046;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+    :fullscreen #fullscreen { display: none; }
+  </style>
+</head>
+<body>
+  <canvas id="game" aria-label="משחקי אותיות" tabindex="-1"></canvas>
+  <div id="status" role="status">טוענים את המשחק…</div>
+  <button id="fullscreen" aria-label="מסך מלא" title="מסך מלא" hidden>⛶</button>
+  <script>
+    const canvas = document.getElementById('game');
+    const statusMessage = document.getElementById('status');
+    const fullscreen = document.getElementById('fullscreen');
+    const build = 'Build/';
+    const config = {
+      dataUrl: build + 'Web.data.unityweb',
+      frameworkUrl: build + 'Web.framework.js.unityweb',
+      codeUrl: build + 'Web.wasm.unityweb',
+      streamingAssetsUrl: 'StreamingAssets',
+      companyName: "LearnToRead",
+      productName: "LearnToRead",
+      productVersion: "1.0",
+      devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2)
+    };
+    const loader = document.createElement('script');
+    loader.src = build + 'Web.loader.js';
+    const showError = error => {
+      statusMessage.textContent = 'המשחק לא נטען. נסו לרענן את הדף או לפתוח אותו בדפדפן מעודכן.';
+      console.error(error);
+    };
+    loader.onerror = showError;
+    loader.onload = () => {
+      createUnityInstance(canvas, config, progress => {
+        statusMessage.textContent = 'טוענים את המשחק… ' + Math.round(progress * 100) + '%';
+      }).then(() => {
+        statusMessage.hidden = true;
+        fullscreen.hidden = !document.fullscreenEnabled;
+        fullscreen.onclick = () => document.documentElement.requestFullscreen().catch(console.warn);
+      }).catch(showError);
+    };
+    document.body.appendChild(loader);
+  </script>
+</body>
+</html>
