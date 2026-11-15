@@ -6,12 +6,20 @@
   <title>משחקי אותיות</title>
   <style>
     html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #0b0b22; }
+    #viewport { position: fixed; inset: 0; overflow: hidden; }
+    #stage { position: absolute; inset: 0; }
+    #stage.portrait-phone {
+      inset: 50% auto auto 50%;
+      width: var(--stage-width);
+      height: var(--stage-height);
+      transform: translate(-50%, -50%) rotate(90deg);
+    }
     canvas { display: block; width: 100%; height: 100%; touch-action: none; }
     #status, #fullscreen { color: #fff; font: bold 1rem system-ui, sans-serif; }
-    #status { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; }
+    #status { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
     #status[hidden] { display: none; }
     #fullscreen {
-      position: fixed;
+      position: absolute;
       bottom: max(8px, env(safe-area-inset-bottom));
       left: max(8px, env(safe-area-inset-left));
       width: 44px;
@@ -22,17 +30,78 @@
       font-size: 1.5rem;
       cursor: pointer;
     }
+    .portrait-phone #fullscreen {
+      bottom: max(8px, env(safe-area-inset-left));
+      left: max(8px, env(safe-area-inset-top));
+    }
     :fullscreen #fullscreen { display: none; }
   </style>
 </head>
 <body>
-  <canvas id="game" aria-label="משחקי אותיות" tabindex="-1"></canvas>
-  <div id="status" role="status">טוענים את המשחק…</div>
-  <button id="fullscreen" aria-label="מסך מלא" title="מסך מלא" hidden>⛶</button>
+  <div id="viewport">
+    <div id="stage">
+      <canvas id="game" aria-label="משחקי אותיות" tabindex="-1"></canvas>
+      <div id="status" role="status">טוענים את המשחק…</div>
+      <button id="fullscreen" aria-label="מסך מלא" title="מסך מלא" hidden>⛶</button>
+    </div>
+  </div>
   <script>
+    const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
     const statusMessage = document.getElementById('status');
     const fullscreen = document.getElementById('fullscreen');
+    const touchScreen = matchMedia('(pointer: coarse)');
+    const displayedCanvasBounds = canvas.getBoundingClientRect.bind(canvas);
+    let rotated = false;
+
+    function fitStage() {
+      rotated = touchScreen.matches && innerHeight > innerWidth;
+      stage.classList.toggle('portrait-phone', rotated);
+      if (rotated) {
+        stage.style.setProperty('--stage-width', innerHeight + 'px');
+        stage.style.setProperty('--stage-height', innerWidth + 'px');
+      }
+    }
+    fitStage();
+    window.addEventListener('resize', fitStage);
+    touchScreen.addEventListener?.('change', fitStage);
+
+    // Unity sizes its render buffer from the canvas rectangle. Supply its
+    // landscape dimensions even when the browser is showing it sideways.
+    canvas.getBoundingClientRect = () => {
+      const rect = displayedCanvasBounds();
+      return rotated ? new DOMRect(rect.left, rect.top, rect.height, rect.width) : rect;
+    };
+
+    function mapPoint(point, rect) {
+      const x = rect.left + (point.clientY - rect.top);
+      const y = rect.top + (rect.right - point.clientX);
+      Object.defineProperties(point, {
+        clientX: { value: x, configurable: true },
+        clientY: { value: y, configurable: true },
+        pageX: { value: x + scrollX, configurable: true },
+        pageY: { value: y + scrollY, configurable: true }
+      });
+    }
+
+    // Rotate the coordinates before Unity handles the trusted browser events.
+    for (const type of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) {
+      window.addEventListener(type, event => {
+        if (!rotated) return;
+        const rect = displayedCanvasBounds();
+        const points = new Set([...Array.from(event.touches), ...Array.from(event.changedTouches),
+          ...Array.from(event.targetTouches)]);
+        for (const point of points) {
+          if (point.target === canvas) mapPoint(point, rect);
+        }
+      }, { capture: true, passive: true });
+    }
+    for (const type of ['mousedown', 'mousemove', 'mouseup']) {
+      window.addEventListener(type, event => {
+        if (rotated && event.target === canvas) mapPoint(event, displayedCanvasBounds());
+      }, { capture: true, passive: true });
+    }
+
     const build = 'Build/';
     const config = {
       dataUrl: build + 'Web.data.unityweb',
