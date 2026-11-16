@@ -158,7 +158,7 @@
     <p id="cloud-status" role="status"></p>
     <button id="cloud-close" type="button">חזרה למשחק</button>
   </dialog>
-  <script src="TemplateData/CloudProfiles.js?v=1.27"></script>
+  <script src="TemplateData/CloudProfiles.js?v=1.28"></script>
   <script>
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
@@ -172,7 +172,7 @@
     let loadingAvatar = '1f407';
     try {
       const savedAvatar = localStorage.getItem('LearnToRead.LoadingAvatar');
-      if (['1f407', '1f42c', '1f98a', '1f989', '1f438', '1f401', '1f43c'].includes(savedAvatar)) loadingAvatar = savedAvatar;
+      if (['1f407', '1f42c', '1f98a', '1f989', '1f438', '1f401', '1f43c', 'doll-avatar'].includes(savedAvatar)) loadingAvatar = savedAvatar;
     } catch (error) {
       // A new game or a browser that blocks storage uses the rabbit.
     }
@@ -254,7 +254,7 @@
     }
 
     const build = 'Build/';
-    const version = "1.27";
+    const version = "1.28";
     const versionKey = 'LearnToRead.WebVersion';
     let loadingTitle = 'טוענים את המשחק…';
     try {
