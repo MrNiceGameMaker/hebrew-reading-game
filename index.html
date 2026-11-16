@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b0b22">
+  <meta name="firebase-project-id" content="learntoread-901d0">
+  <meta name="firebase-web-api-key" content="AIzaSyAsuLE02IDNxjNK048X-5O1xqX2c2-ydl8">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <link rel="manifest" href="manifest.webmanifest?v=home">
@@ -35,7 +37,7 @@
     }
     @keyframes greeting { 50% { transform: translateY(-10px) rotate(5deg); } }
     @media (prefers-reduced-motion: reduce) { #loading-avatar { animation: none; } }
-    #player-name-dialog {
+    #player-name-dialog, #cloud-dialog {
       box-sizing: border-box;
       width: min(440px, calc(100% - 32px));
       max-height: calc(100% - 32px);
@@ -46,9 +48,9 @@
       color: #f7f6ff;
       font: 700 1.15rem system-ui, sans-serif;
     }
-    #player-name-dialog::backdrop { background: #09071cbd; }
+    #player-name-dialog::backdrop, #cloud-dialog::backdrop { background: #09071cbd; }
     #player-name-form { display: grid; gap: 14px; }
-    #player-name-input {
+    #player-name-input, #cloud-auth input:not([type=checkbox]) {
       box-sizing: border-box;
       width: 100%;
       padding: 11px 13px;
@@ -59,7 +61,7 @@
       font: inherit;
     }
     #player-name-actions { display: flex; gap: 10px; }
-    #player-name-actions button {
+    #player-name-actions button, #cloud-dialog button {
       min-height: 44px;
       flex: 1;
       border: 1px solid #9d8ce0;
@@ -71,6 +73,15 @@
       cursor: pointer;
     }
     #player-name-actions button[type=submit] { color: #132737; background: #7fffdd; }
+    #cloud-dialog { width: min(510px, calc(100% - 32px)); font-weight: 600; }
+    #cloud-dialog h2 { margin: 0 0 12px; font-size: 1.5rem; }
+    #cloud-auth:not([hidden]) { display: grid; gap: 9px; }
+    #cloud-auth label { font-size: .95rem; }
+    #cloud-import-label { margin: 3px 0; }
+    .cloud-actions { display: flex; gap: 8px; margin: 6px 0; }
+    #cloud-login, #cloud-sync-now { color: #132737; background: #7fffdd; }
+    #cloud-status { min-height: 1.4em; margin: 12px 0 6px; font-size: .95rem; }
+    #cloud-dialog button:disabled { opacity: .6; }
     #retry {
       justify-self: center;
       min-height: 48px;
@@ -124,6 +135,30 @@
       </div>
     </form>
   </dialog>
+  <dialog id="cloud-dialog" aria-labelledby="cloud-title">
+    <h2 id="cloud-title">סנכרון להורים</h2>
+    <form id="cloud-auth" hidden>
+      <label for="cloud-email">דוא״ל של ההורה</label>
+      <input id="cloud-email" type="email" autocomplete="username" dir="ltr" maxlength="254" required>
+      <label for="cloud-password">סיסמה</label>
+      <input id="cloud-password" type="password" autocomplete="current-password" dir="ltr" minlength="6" maxlength="100" required>
+      <label id="cloud-import-label" hidden><input id="cloud-import" type="checkbox" checked> הוספת הפרופילים השמורים במכשיר לחשבון</label>
+      <div class="cloud-actions">
+        <button id="cloud-login" type="submit" value="login">כניסה</button>
+        <button id="cloud-register" type="submit" value="register">פתיחת חשבון הורה</button>
+      </div>
+      <button id="cloud-recovery" type="submit" value="recover" formnovalidate>איפוס סיסמה</button>
+    </form>
+    <div id="cloud-signed-in" hidden>
+      <div class="cloud-actions">
+        <button id="cloud-sync-now" type="button">סנכרן עכשיו</button>
+        <button id="cloud-sign-out" type="button">יציאה מהחשבון</button>
+      </div>
+    </div>
+    <p id="cloud-status" role="status"></p>
+    <button id="cloud-close" type="button">חזרה למשחק</button>
+  </dialog>
+  <script src="TemplateData/CloudProfiles.js?v=1.19"></script>
   <script>
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
@@ -147,6 +182,11 @@
     const nameInput = document.getElementById('player-name-input');
     let nameTarget;
     let unityInstance;
+    let cloudTarget;
+    window.learnToReadReadCloudSnapshot = (target, local) => {
+      cloudTarget = target;
+      return window.learnToReadCloud?.readSnapshot(local) ?? local;
+    };
     window.learnToReadEditPlayerName = (target, value) => {
       nameTarget = target;
       nameInput.value = value;
@@ -214,7 +254,7 @@
     }
 
     const build = 'Build/';
-    const version = "1.18";
+    const version = "1.19";
     const versionKey = 'LearnToRead.WebVersion';
     let loadingTitle = 'טוענים את המשחק…';
     try {
@@ -252,6 +292,9 @@
         statusMessage.textContent = loadingTitle + ' ' + Math.round(progress * 100) + '%';
       }).then(instance => {
         unityInstance = instance;
+        window.learnToReadCloud?.attach(() => {
+          if (cloudTarget) instance.SendMessage(cloudTarget, 'RefreshCloudProfiles');
+        });
         try { localStorage.setItem(versionKey, version); } catch (error) { /* Storage is optional. */ }
         statusPanel.hidden = true;
         fullscreen.hidden = !document.fullscreenEnabled;
