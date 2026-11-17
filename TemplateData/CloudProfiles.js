@@ -11,19 +11,92 @@
   const sessionKey = 'LearnToRead.Firebase.' + project;
   const accountKey = id => sessionKey + '.profiles.' + id;
   const checkpointKey = id => accountKey(id) + '.checkpoint';
+  const backupValues = new Map();
+  const storageFailures = new Set();
+  let lastStorageWrite = 0;
+  let backupDatabase;
+  // A family with many drawings can exhaust localStorage. Keep its newest
+  // records in IndexedDB when that happens, including across browser restarts.
+  const backupReady = new Promise(resolve => {
+    let open;
+    try { open = indexedDB.open('LearnToRead.CloudBackup', 1); }
+    catch { resolve(); return; }
+    open.onupgradeneeded = () => open.result.createObjectStore('records');
+    open.onerror = () => resolve();
+    open.onblocked = () => resolve();
+    open.onsuccess = () => {
+      backupDatabase = open.result;
+      backupDatabase.onversionchange = () => backupDatabase.close();
+      const transaction = backupDatabase.transaction('records', 'readonly');
+      const cursor = transaction.objectStore('records').openCursor();
+      cursor.onsuccess = () => {
+        const entry = cursor.result;
+        if (!entry) return;
+        if (entry.key.startsWith(sessionKey)) backupValues.set(entry.key, entry.value);
+        entry.continue();
+      };
+      transaction.oncomplete = transaction.onabort = () => resolve();
+    };
+  });
   const empty = () => ({ snapshot: { schemaVersion: 1, profiles: [], deletedProfileIds: [], selected: '' },
     clocks: {}, selectedClock: '' });
   function decode(value, fallback) {
     try { return JSON.parse(value) ?? fallback; } catch { return fallback; }
   }
   function read(key, fallback) {
-    try { return decode(localStorage.getItem(key), fallback); } catch { return fallback; }
+    let local;
+    try { local = decode(localStorage.getItem(key), null); } catch { /* Try the backup. */ }
+    const backup = backupValues.get(key);
+    const latest = storageOrder(backup) >= storageOrder(local) && backupValues.has(key) ? backup : local;
+    lastStorageWrite = Math.max(lastStorageWrite, storageOrder(latest));
+    return storageValue(latest) ?? fallback;
+  }
+  function storageOrder(record) {
+    return record?.storageVersion === 1 ? Number(record.writtenAt) || 0 : 0;
+  }
+  function storageValue(record) {
+    return record?.storageVersion === 1 ? record.data : record;
   }
   function write(key, data) {
+    const hadBackup = backupValues.has(key);
+    // Compare both durable copies after a restart even if cleanup of an old
+    // backup was interrupted. Old, unwrapped saves remain readable.
+    read(key, null);
+    lastStorageWrite = Math.max(Date.now() * 1000, lastStorageWrite + 1);
+    const record = { storageVersion: 1, writtenAt: lastStorageWrite, data };
+    let stored = false;
     try {
-      if (data == null) localStorage.removeItem(key);
-      else localStorage.setItem(key, JSON.stringify(data));
-    } catch { /* The currently open game still has an in-memory copy. */ }
+      localStorage.setItem(key, JSON.stringify(record));
+      stored = true;
+    } catch { /* Use the larger IndexedDB store below. */ }
+    if (stored) {
+      backupValues.delete(key);
+      storageFailures.delete(key);
+    }
+    else backupValues.set(key, record);
+    if (stored && !hadBackup) return;
+    if (!backupDatabase) {
+      if (!stored) failedLocalSave(key);
+      return;
+    }
+    try {
+      const transaction = backupDatabase.transaction('records', 'readwrite');
+      const records = transaction.objectStore('records');
+      if (stored) records.delete(key);
+      else records.put(record, key);
+      transaction.oncomplete = () => {
+        if (storageFailures.delete(key)) updateStatus(status);
+      };
+      transaction.onabort = () => {
+        if (!stored) failedLocalSave(key);
+      };
+    } catch {
+      if (!stored) failedLocalSave(key);
+    }
+  }
+  function failedLocalSave(key) {
+    storageFailures.add(key);
+    updateStatus(status);
   }
   function normalize(snapshot) {
     return {
@@ -58,9 +131,9 @@
     return result;
   }
 
-  let session = read(sessionKey, null);
-  let cached = session ? read(accountKey(session.id), empty()) : empty();
-  let checkpoint = session ? read(checkpointKey(session.id), empty()) : empty();
+  let session;
+  let cached = empty();
+  let checkpoint = empty();
   let anonymous;
   let rendered;
   const writer = [...crypto.getRandomValues(new Uint8Array(8))]
@@ -72,7 +145,7 @@
   let refreshPending = false;
   let switchingAccount = false;
   let authRequired = false;
-  let status = session ? 'בודקים את השמירה בענן…' : '';
+  let status = '';
 
   function stamp() {
     lastChange = Math.max(Date.now(), lastChange + 1, ...Object.values(cached.clocks)
@@ -157,7 +230,9 @@
   }
   function updateStatus(message) {
     status = message;
-    document.getElementById('cloud-status').textContent = message;
+    document.getElementById('cloud-status').textContent = storageFailures.size
+      ? 'אין אפשרות לשמור במכשיר. אפשר לפנות מקום ולנסות שוב'
+      : message;
   }
   function refreshIfNeeded() {
     if (!rendered || same(rendered, cached.snapshot)) return;
@@ -307,6 +382,13 @@
   };
 
   window.learnToReadCloud = {
+    ready: backupReady.then(() => {
+      session = read(sessionKey, null);
+      cached = session ? read(accountKey(session.id), empty()) : empty();
+      checkpoint = session ? read(checkpointKey(session.id), empty()) : empty();
+      status = session ? 'בודקים את השמירה בענן…' : '';
+      if (session) sync();
+    }),
     readSnapshot(local) {
       anonymous = normalize(decode(local, null));
       rendered = session ? cached.snapshot : anonymous;
@@ -358,7 +440,6 @@
   window.addEventListener('online', () => sync());
   document.addEventListener('visibilitychange', () => sync(document.hidden));
   window.addEventListener('storage', event => {
-    if (event.key === sessionKey && session && !event.newValue) location.reload();
+    if (event.key === sessionKey && session && !storageValue(decode(event.newValue, null))) location.reload();
   });
-  if (session) sync();
 })();

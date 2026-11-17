@@ -158,7 +158,7 @@
     <p id="cloud-status" role="status"></p>
     <button id="cloud-close" type="button">חזרה למשחק</button>
   </dialog>
-  <script src="TemplateData/CloudProfiles.js?v=1.29"></script>
+  <script src="TemplateData/CloudProfiles.js?v=1.30"></script>
   <script>
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
@@ -254,7 +254,7 @@
     }
 
     const build = 'Build/';
-    const version = "1.29";
+    const version = "1.30";
     const versionKey = 'LearnToRead.WebVersion';
     let loadingTitle = 'טוענים את המשחק…';
     try {
@@ -287,7 +287,8 @@
     };
     retry.onclick = () => location.reload();
     loader.onerror = showError;
-    loader.onload = () => {
+    loader.onload = async () => {
+      await window.learnToReadCloud?.ready;
       createUnityInstance(canvas, config, progress => {
         statusMessage.textContent = loadingTitle + ' ' + Math.round(progress * 100) + '%';
       }).then(instance => {
