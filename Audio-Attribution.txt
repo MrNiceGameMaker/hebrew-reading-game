@@ -1,0 +1,5 @@
+Football crowd recordings by Gregor Quendel.
+Source: https://opengameart.org/content/free-crowd-cheering-sounds
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+Edits: excerpts, fades, mono conversion and loudness normalization for the game's stadium ambience and goal celebration.
