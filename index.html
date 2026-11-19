@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="טולי טאון">
-  <link rel="manifest" href="manifest.webmanifest?v=1.50">
+  <link rel="manifest" href="manifest.webmanifest?v=1.51">
   <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/tuli-friends-180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/tuli-friends-32.png">
   <title>טולי טאון · Tuli Town</title>
@@ -38,7 +38,7 @@
     }
     @keyframes greeting { 50% { transform: translateY(-10px) rotate(5deg); } }
     @media (prefers-reduced-motion: reduce) { #loading-avatar { animation: none; } }
-    #player-name-dialog, #cloud-dialog {
+    #player-name-dialog, #cloud-dialog, #install-intro, #pilot-dialog {
       box-sizing: border-box;
       width: min(440px, calc(100% - 32px));
       max-height: calc(100% - 32px);
@@ -49,7 +49,7 @@
       color: #f7f6ff;
       font: 700 1.15rem system-ui, sans-serif;
     }
-    #player-name-dialog::backdrop, #cloud-dialog::backdrop { background: #09071cbd; }
+    #player-name-dialog::backdrop, #cloud-dialog::backdrop, #install-intro::backdrop, #pilot-dialog::backdrop { background: #09071cbd; }
     #player-name-form { display: grid; gap: 14px; }
     #player-name-input, #cloud-auth input:not([type=checkbox]) {
       box-sizing: border-box;
@@ -62,7 +62,7 @@
       font: inherit;
     }
     #player-name-actions { display: flex; gap: 10px; }
-    #player-name-actions button, #cloud-dialog button {
+    #player-name-actions button, #cloud-dialog button, #install-intro button, #pilot-dialog button {
       min-height: 44px;
       flex: 1;
       border: 1px solid #9d8ce0;
@@ -80,6 +80,15 @@
     #cloud-auth label { font-size: .95rem; }
     #cloud-import-label { margin: 3px 0; }
     .cloud-actions { display: flex; gap: 8px; margin: 6px 0; }
+    #install-intro h2, #pilot-dialog h2 { margin: 0 0 8px; }
+    #install-app, #pilot-save { background: #7fffdd; color: #132737; }
+    #pilot-dialog input[type=text] { font: inherit; width: 13em; max-width: 100%; margin: 8px 0; }
+    #pilot-dialog:has(#pilot-report:not([hidden])) { width: min(900px, calc(100% - 24px)); }
+    #pilot-dialog label { display: block; margin: 12px 0; }
+    #pilot-dialog input[type=password] { box-sizing: border-box; width: 100%; padding: 8px; font: inherit; }
+    #pilot-table { overflow: auto; }
+    #pilot-table table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+    #pilot-table th, #pilot-table td { padding: 9px; border-bottom: 1px solid #645b8c; text-align: start; }
     #cloud-login, #cloud-sync-now { color: #132737; background: #7fffdd; }
     #cloud-status { min-height: 1.4em; margin: 12px 0 6px; font-size: .95rem; }
     #cloud-dialog button:disabled { opacity: .6; }
@@ -150,6 +159,15 @@
       </div>
     </form>
   </dialog>
+  <dialog id="install-intro" aria-labelledby="install-title">
+    <h2 id="install-title">טולי טאון</h2>
+    <p>לחוויה הטובה ביותר בטלפון, מומלץ להתקין את המשחק למסך הבית.</p>
+    <p id="install-help" role="status" hidden></p>
+    <div class="cloud-actions">
+      <button type="button" id="install-app">התקנה</button>
+      <button type="button" id="continue-web">המשך באתר</button>
+    </div>
+  </dialog>
   <dialog id="cloud-dialog" aria-labelledby="cloud-title">
     <h2 id="cloud-title">סנכרון להורים</h2>
     <form id="cloud-auth" hidden>
@@ -169,11 +187,40 @@
         <button id="cloud-sync-now" type="button">סנכרן עכשיו</button>
         <button id="cloud-sign-out" type="button">יציאה מהחשבון</button>
       </div>
+      <button id="open-pilot" type="button">השתתפות בפיילוט</button>
     </div>
     <p id="cloud-status" role="status"></p>
     <button id="cloud-close" type="button">חזרה למשחק</button>
   </dialog>
-  <script src="TemplateData/CloudProfiles.js?v=1.50"></script>
+  <dialog id="pilot-dialog" aria-labelledby="pilot-title">
+    <h2 id="pilot-title">פיילוט טולי טאון</h2>
+    <section id="pilot-settings">
+      <p>בהסכמת הורה, דוח הפיילוט כולל קוד משפחה, ביקורים, זמן פעיל ושלב אחרון במשחק. אפשר להפסיק את השיתוף בכל עת.</p>
+      <p id="pilot-family" hidden>קוד המשפחה <b id="pilot-family-code" dir="ltr"></b></p>
+      <form id="pilot-consent">
+        <label><input type="checkbox" required> אני הורה ומאשר/ת לשתף נתוני שימוש לפיילוט.</label>
+        <label>סיסמת חשבון ההורה <input type="password" autocomplete="current-password" required></label>
+        <button type="submit" id="pilot-save">הצטרפות לפיילוט</button>
+      </form>
+      <button type="button" id="pilot-stop" hidden>הפסקת השיתוף</button>
+    </section>
+    <button type="button" id="pilot-admin" hidden>דוח לפי משפחה</button>
+    <div id="pilot-verify" hidden>
+      <p>כדי לפתוח את הדוח, התחברו בחשבון מנהל הפיילוט ואמתו את כתובת הדוא״ל.</p>
+      <div class="cloud-actions">
+        <button type="button" id="pilot-send-verification">שליחת קישור אימות</button>
+        <button type="button" id="pilot-check-verification">בדיקת אימות מחדש</button>
+      </div>
+    </div>
+    <section id="pilot-report" hidden>
+      <button type="button" id="pilot-refresh">רענון הדוח</button>
+      <div id="pilot-table"></div>
+    </section>
+    <p id="pilot-status" role="status"></p>
+    <button type="button" id="pilot-close">סגירה</button>
+  </dialog>
+  <script src="TemplateData/CloudProfiles.js?v=1.51"></script>
+  <script src="TemplateData/PilotReport.js?v=1.51"></script>
   <script>
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
@@ -183,6 +230,39 @@
     const fullscreen = document.getElementById('fullscreen');
     const touchScreen = matchMedia('(pointer: coarse)');
     const displayedCanvasBounds = canvas.getBoundingClientRect.bind(canvas);
+    const viewport = document.getElementById('viewport');
+    let installPrompt;
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      installPrompt = event;
+    });
+    const installIntro = document.getElementById('install-intro');
+    const installHelp = document.getElementById('install-help');
+    const appleMobile = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+      navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+    const mobileBrowser = appleMobile || /Android/.test(navigator.userAgent);
+    const standalone = matchMedia('(display-mode: standalone)').matches ||
+      matchMedia('(display-mode: fullscreen)').matches || navigator.standalone;
+    document.getElementById('continue-web').onclick = () => installIntro.close();
+    document.getElementById('install-app').onclick = async () => {
+      if (installPrompt) {
+        const prompt = installPrompt;
+        installPrompt = null;
+        try {
+          await prompt.prompt();
+          if ((await prompt.userChoice).outcome === 'accepted') installIntro.close();
+          return;
+        } catch { /* The browser may have dismissed its install prompt. */ }
+      }
+      installHelp.hidden = false;
+      installHelp.textContent = appleMobile
+        ? 'ב־Safari פתחו את תפריט השיתוף, בחרו ״הוספה למסך הבית״ והפעילו ״פתיחה כיישום אינטרנט״.'
+        : 'בתפריט הדפדפן ⋮ בחרו ״התקנת אפליקציה״ או ״הוספה למסך הבית״.';
+    };
+    window.addEventListener('appinstalled', () => {
+      installPrompt = null;
+      if (installIntro.open) installIntro.close();
+    });
     let rotated = false;
     let loadingAvatar = '1f407';
     try {
@@ -221,15 +301,21 @@
     });
 
     function fitStage() {
-      rotated = touchScreen.matches && innerHeight > innerWidth;
+      const visual = window.visualViewport;
+      const width = visual && visual.scale === 1 ? Math.round(visual.width) : innerWidth;
+      const height = visual && visual.scale === 1 ? Math.round(visual.height) : innerHeight;
+      viewport.style.width = width + 'px';
+      viewport.style.height = height + 'px';
+      rotated = touchScreen.matches && height > width;
       stage.classList.toggle('portrait-phone', rotated);
       if (rotated) {
-        stage.style.setProperty('--stage-width', innerHeight + 'px');
-        stage.style.setProperty('--stage-height', innerWidth + 'px');
+        stage.style.setProperty('--stage-width', height + 'px');
+        stage.style.setProperty('--stage-height', width + 'px');
       }
     }
     fitStage();
     window.addEventListener('resize', fitStage);
+    window.visualViewport?.addEventListener('resize', fitStage);
     touchScreen.addEventListener?.('change', fitStage);
 
     // Unity sizes its render buffer from the canvas rectangle. Supply its
@@ -269,7 +355,7 @@
     }
 
     const build = 'Build/';
-    const version = "1.50";
+    const version = "1.51";
     const versionKey = 'LearnToRead.WebVersion';
     const updateButton = document.getElementById('web-update');
     let releaseRequest;
@@ -383,6 +469,17 @@
     async function startGame() {
       const candidate = await checkRelease();
       if (candidate && openRelease(candidate)) return;
+      if (new URLSearchParams(location.search).has('pilot-report')) {
+        statusMessage.textContent = 'דוח הפיילוט של טולי טאון';
+        retry.textContent = 'פתיחת המשחק';
+        retry.hidden = false;
+        retry.onclick = () => location.assign('./');
+        return;
+      }
+      if (mobileBrowser && !standalone) {
+        installIntro.showModal();
+        await new Promise(resolve => installIntro.addEventListener('close', resolve, { once: true }));
+      }
       document.body.appendChild(loader);
       document.addEventListener('visibilitychange', offerUpdate);
       window.addEventListener('focus', offerUpdate);

@@ -341,6 +341,7 @@
       refreshPending = true;
       refreshGame?.();
       dialog.close();
+      window.learnToReadPilot?.accountChanged();
     } catch (error) {
       const messages = {
         INVALID_LOGIN_CREDENTIALS: 'כתובת הדוא״ל או הסיסמה שגויה',
@@ -372,6 +373,7 @@
     clearTimeout(syncTimer);
     switchingAccount = true;
     session = null;
+    window.learnToReadPilot?.accountChanged();
     authRequired = false;
     write(sessionKey, null);
     cached = empty();
@@ -389,6 +391,47 @@
       status = session ? 'בודקים את השמירה בענן…' : '';
       if (session) sync();
     }),
+    pilotAccount: () => authRequired ? null : session?.id,
+    async pilotDocument(path, data, keepalive = false) {
+      const account = session;
+      if (!account || authRequired) throw new Error('Sign in required');
+      const headers = await userToken(account);
+      if (session !== account) throw new Error('The parent changed');
+      const url = firestoreEndpoint.slice(0, -'families/'.length) + path;
+      if (!data) {
+        try { return await request(url, { headers, cache: 'no-store' }); }
+        catch (error) { if (error.httpStatus === 404) return null; throw error; }
+      }
+      const fields = Object.fromEntries(Object.entries(data).map(([key, value]) => {
+        const field = typeof value === 'boolean' ? { booleanValue: value } :
+          typeof value === 'number' ? { integerValue: String(value) } : { stringValue: value };
+        return [key, field];
+      }));
+      return request(url, { method: 'PATCH', headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields }), keepalive });
+    },
+    async confirmPilotParent(password) {
+      const account = session;
+      if (!account || authRequired) throw new Error('Sign in required');
+      await userToken(account);
+      const lookup = await authenticate('lookup', { idToken: account.token });
+      const email = lookup.users?.[0]?.email;
+      if (!email || session !== account) throw new Error('Sign in required');
+      const login = await authenticate('signInWithPassword', { email, password, returnSecureToken: true });
+      if (session !== account || login.localId !== account.id) throw new Error('The parent changed');
+      account.token = login.idToken;
+      account.refresh = login.refreshToken;
+      account.expires = Date.now() + Number(login.expiresIn) * 1000;
+      write(sessionKey, account);
+    },
+    async verifyPilotEmail(send) {
+      const account = session;
+      if (!account || authRequired) throw new Error('Sign in required');
+      if (!send) account.expires = 0;
+      await userToken(account);
+      if (session !== account) throw new Error('The parent changed');
+      if (send) await authenticate('sendOobCode', { requestType: 'VERIFY_EMAIL', idToken: account.token });
+    },
     readSnapshot(local) {
       anonymous = normalize(decode(local, null));
       rendered = session ? cached.snapshot : anonymous;
