@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="טולי טאון">
-  <link rel="manifest" href="manifest.webmanifest?v=1.46">
+  <link rel="manifest" href="manifest.webmanifest?v=1.47">
   <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/tuli-friends-180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/tuli-friends-32.png">
   <title>טולי טאון · Tuli Town</title>
@@ -24,7 +24,7 @@
       transform: translate(-50%, -50%) rotate(90deg);
     }
     canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-    #status, #fullscreen, #retry { color: #fff; font: bold 1rem system-ui, sans-serif; }
+    #status, #fullscreen, #retry, #web-update { color: #fff; font: bold 1rem system-ui, sans-serif; }
     #status { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 24px; }
     #status[hidden] { display: none; }
     #loading-avatar {
@@ -108,6 +108,19 @@
       bottom: max(8px, env(safe-area-inset-left));
       left: max(8px, env(safe-area-inset-top));
     }
+    #web-update {
+      position: absolute;
+      top: max(10px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      min-height: 44px;
+      padding: 8px 16px;
+      border: 1px solid #9d8ce0;
+      border-radius: 18px;
+      background: #272046;
+      cursor: pointer;
+    }
+    .portrait-phone #web-update { top: max(10px, env(safe-area-inset-left)); }
     :fullscreen #fullscreen, .game-menu-fullscreen #fullscreen { display: none; }
     @media (display-mode: standalone), (display-mode: fullscreen) {
       #fullscreen { display: none; }
@@ -124,6 +137,7 @@
         <button id="retry" hidden>נסו שוב</button>
       </div>
       <button id="fullscreen" aria-label="מסך מלא" title="מסך מלא" hidden>⛶</button>
+      <button type="button" id="web-update" hidden>עדכון זמין · לטעון עכשיו</button>
     </div>
   </div>
   <dialog id="player-name-dialog" aria-labelledby="player-name-label">
@@ -159,7 +173,7 @@
     <p id="cloud-status" role="status"></p>
     <button id="cloud-close" type="button">חזרה למשחק</button>
   </dialog>
-  <script src="TemplateData/CloudProfiles.js?v=1.46"></script>
+  <script src="TemplateData/CloudProfiles.js?v=1.47"></script>
   <script>
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
@@ -255,8 +269,71 @@
     }
 
     const build = 'Build/';
-    const version = "1.46";
+    const version = "1.47";
     const versionKey = 'LearnToRead.WebVersion';
+    const updateButton = document.getElementById('web-update');
+    let releaseRequest;
+    let lastReleaseCheck = -Infinity;
+
+    function isNewerRelease(candidate) {
+      if (!/^\d+(?:\.\d+){1,3}$/.test(candidate)) return false;
+      const currentParts = version.split('.').map(Number);
+      const candidateParts = candidate.split('.').map(Number);
+      for (let index = 0; index < Math.max(currentParts.length, candidateParts.length); index++) {
+        const difference = (candidateParts[index] ?? 0) - (currentParts[index] ?? 0);
+        if (difference !== 0) return difference > 0;
+      }
+      return false;
+    }
+
+    async function readRelease() {
+      const url = new URL('release.txt', location.href);
+      // GitHub Pages also caches responses at the edge. Use a fresh URL for this small file.
+      url.searchParams.set('check', String(Date.now()));
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 1500);
+      try {
+        const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+        const candidate = response.ok ? (await response.text()).trim() : '';
+        return isNewerRelease(candidate) ? candidate : null;
+      } catch {
+        return null;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    function checkRelease() {
+      if (releaseRequest) return releaseRequest;
+      if (performance.now() - lastReleaseCheck < 1000) return Promise.resolve(null);
+      lastReleaseCheck = performance.now();
+      releaseRequest = readRelease().finally(() => { releaseRequest = null; });
+      return releaseRequest;
+    }
+
+    function openRelease(candidate) {
+      const launch = new URL(location.href);
+      // An edge still serving older HTML must not send the app through a redirect loop.
+      if (launch.searchParams.get('v') === candidate) return false;
+      launch.searchParams.set('v', candidate);
+      statusPanel.hidden = false;
+      statusMessage.textContent = 'מוריד עדכון…';
+      location.replace(launch.href);
+      return true;
+    }
+
+    async function offerUpdate() {
+      if (document.hidden) return;
+      const candidate = await checkRelease();
+      if (candidate && new URL(location.href).searchParams.get('v') !== candidate) {
+        updateButton.hidden = false;
+        updateButton.onclick = () => {
+          updateButton.hidden = true;
+          openRelease(candidate);
+        };
+      }
+    }
+
     let loadingTitle = 'טוענים את המשחק…';
     try {
       const previousVersion = localStorage.getItem(versionKey);
@@ -303,7 +380,15 @@
         fullscreen.onclick = () => document.documentElement.requestFullscreen().catch(console.warn);
       }).catch(showError);
     };
-    document.body.appendChild(loader);
+    async function startGame() {
+      const candidate = await checkRelease();
+      if (candidate && openRelease(candidate)) return;
+      document.body.appendChild(loader);
+      document.addEventListener('visibilitychange', offerUpdate);
+      window.addEventListener('focus', offerUpdate);
+      window.addEventListener('pageshow', event => { if (event.persisted) offerUpdate(); });
+    }
+    startGame();
   </script>
 </body>
 </html>
