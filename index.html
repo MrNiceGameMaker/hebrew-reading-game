@@ -9,11 +9,17 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="טולי טאון">
-  <link rel="manifest" href="manifest.webmanifest?v=1.53">
+  <link rel="manifest" href="manifest.webmanifest?v=1.54">
   <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/tuli-friends-180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/tuli-friends-32.png">
   <title>טולי טאון · Tuli Town</title>
   <style>
+    @font-face {
+      font-family: "Tuli Title";
+      src: url("TemplateData/tuli-title-hebrew.woff2") format("woff2");
+      font-weight: 900;
+      font-display: swap;
+    }
     html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #0b0b22; }
     #viewport { position: fixed; inset: 0; overflow: hidden; }
     #stage { position: absolute; inset: 0; }
@@ -25,19 +31,98 @@
     }
     canvas { display: block; width: 100%; height: 100%; touch-action: none; }
     #status, #fullscreen, #retry, #web-update { color: #fff; font: bold 1rem system-ui, sans-serif; }
-    #status { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 24px; }
+    #status {
+      position: absolute;
+      inset: 0;
+      container-type: size;
+      overflow: hidden;
+      text-align: center;
+      background: linear-gradient(#ffe9af 8%, #eeb47b 57%, #779873 100%);
+    }
     #status[hidden] { display: none; }
+    #loading-town {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: 50% 54%;
+    }
+    #loading-title {
+      position: absolute;
+      inset: clamp(8px, 7cqh, 76px) 0 auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: .21em;
+      margin: 0;
+      color: #ffcf60;
+      font: 900 clamp(30px, min(15cqh, 12cqw), 136px)/1.14 "Tuli Title", "Arial", sans-serif;
+      -webkit-text-stroke: .10em #4a2b4c;
+      paint-order: stroke fill;
+    }
+    #loading-title span {
+      filter: drop-shadow(0 .028em 0 #4a2b4c) drop-shadow(0 .054em 0 #ad6f60)
+        drop-shadow(0 -.018em 0 #fff2c6);
+    }
+    #loading-title span:first-child { transform: rotate(4deg); }
+    #loading-title span:last-child { transform: rotate(-4deg); color: #96ecd6; }
+    #loading-title::before, #loading-title::after {
+      content: "";
+      width: .28em;
+      height: .35em;
+      background: #fff3b3;
+      clip-path: polygon(50% 0, 64% 37%, 100% 50%, 64% 63%, 50% 100%, 36% 63%, 0 50%, 36% 37%);
+      animation: town-sparkle 2.7s ease-in-out infinite;
+    }
+    #loading-title::after { width: .20em; height: .26em; animation-delay: -1.3s; }
+    #loading-controls {
+      position: absolute;
+      inset-inline: 12px;
+      bottom: max(10px, 4cqh, env(safe-area-inset-bottom));
+      display: grid;
+      justify-items: center;
+      gap: 8px;
+    }
+    .portrait-phone #loading-controls { bottom: max(10px, 4cqh, env(safe-area-inset-left)); }
+    #loading-badge {
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: min(370px, 100%);
+      border: 2px solid #e9b36e;
+      padding: 6px 16px 7px 18px;
+      border-radius: 24px;
+      color: #492c4b;
+      background: #fff3d9;
+      box-shadow: 0 4px 0 #70414780, 0 7px 22px #48263157;
+    }
     #loading-avatar {
-      justify-self: center;
-      width: 112px;
-      height: 112px;
-      padding: 20px;
+      width: clamp(29px, 7cqh, 56px);
+      height: auto;
+      padding: 5px;
       border-radius: 50%;
-      background: radial-gradient(circle, #4c3575 0%, #241b4f 57%, transparent 72%);
+      background: #ffda84;
       animation: greeting 1.5s ease-in-out infinite;
     }
-    @keyframes greeting { 50% { transform: translateY(-10px) rotate(5deg); } }
-    @media (prefers-reduced-motion: reduce) { #loading-avatar { animation: none; } }
+    #loading-details { flex: 1; min-inline-size: 0; }
+    #loading-message { margin: 0; font-size: clamp(.88rem, 3cqh, 1.19rem); }
+    #loading-progress {
+      inline-size: 100%;
+      block-size: 8px;
+      margin-block-start: 2px;
+      accent-color: #268878;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    #loading-progress::-webkit-progress-bar { background: #eadcc4; }
+    #loading-progress::-webkit-progress-value { background: #268878; border-radius: 12px; }
+    @keyframes greeting { 50% { transform: translateY(-3px) rotate(7deg); } }
+    @keyframes town-sparkle { 50% { transform: translateY(-.10em) scale(1.3); opacity: .7; } }
+    @media (prefers-reduced-motion: reduce) {
+      #loading-avatar, #loading-title::before, #loading-title::after { animation: none; }
+    }
     #player-name-dialog, #cloud-dialog, #install-intro, #pilot-dialog {
       box-sizing: border-box;
       width: min(440px, calc(100% - 32px));
@@ -141,9 +226,18 @@
     <div id="stage">
       <canvas id="game" aria-label="טולי טאון" tabindex="-1"></canvas>
       <div id="status">
-        <img id="loading-avatar" width="112" height="112" alt="">
-        <p id="loading-message" role="status">טוענים את המשחק…</p>
-        <button id="retry" hidden>נסו שוב</button>
+        <img id="loading-town" src="TemplateData/tuli-town-square.webp" width="1440" height="720" fetchpriority="high" decoding="async" alt="">
+        <h1 id="loading-title" aria-label="טולי טאון"><span>טולי</span> <span>טאון</span></h1>
+        <div id="loading-controls">
+          <div id="loading-badge">
+            <img id="loading-avatar" width="56" height="56" alt="">
+            <div id="loading-details">
+              <p id="loading-message" role="status">טוענים את המשחק…</p>
+              <progress id="loading-progress" max="1" aria-label="התקדמות הטעינה"></progress>
+            </div>
+          </div>
+          <button id="retry" hidden>נסו שוב</button>
+        </div>
       </div>
       <button id="fullscreen" aria-label="מסך מלא" title="מסך מלא" hidden>⛶</button>
       <button type="button" id="web-update" hidden>עדכון זמין · לטעון עכשיו</button>
@@ -219,13 +313,14 @@
     <p id="pilot-status" role="status"></p>
     <button type="button" id="pilot-close">סגירה</button>
   </dialog>
-  <script src="TemplateData/CloudProfiles.js?v=1.53"></script>
-  <script src="TemplateData/PilotReport.js?v=1.53"></script>
+  <script src="TemplateData/CloudProfiles.js?v=1.54"></script>
+  <script src="TemplateData/PilotReport.js?v=1.54"></script>
   <script>
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
     const statusPanel = document.getElementById('status');
     const statusMessage = document.getElementById('loading-message');
+    const loadingProgress = document.getElementById('loading-progress');
     const retry = document.getElementById('retry');
     const fullscreen = document.getElementById('fullscreen');
     const touchScreen = matchMedia('(pointer: coarse)');
@@ -355,7 +450,7 @@
     }
 
     const build = 'Build/';
-    const version = "1.53";
+    const version = "1.54";
     const versionKey = 'LearnToRead.WebVersion';
     const updateButton = document.getElementById('web-update');
     let releaseRequest;
@@ -404,6 +499,7 @@
       launch.searchParams.set('v', candidate);
       statusPanel.hidden = false;
       statusMessage.textContent = 'מוריד עדכון…';
+      loadingProgress.removeAttribute('value');
       location.replace(launch.href);
       return true;
     }
@@ -446,6 +542,7 @@
     loader.src = assetUrl('Web.loader.js');
     const showError = error => {
       statusMessage.textContent = 'המשחק לא נטען. בדקו את החיבור לאינטרנט ונסו שוב.';
+      loadingProgress.hidden = true;
       retry.hidden = false;
       console.error(error);
     };
@@ -454,7 +551,7 @@
     loader.onload = async () => {
       await window.learnToReadCloud?.ready;
       createUnityInstance(canvas, config, progress => {
-        statusMessage.textContent = loadingTitle + ' ' + Math.round(progress * 100) + '%';
+        loadingProgress.value = progress;
       }).then(instance => {
         unityInstance = instance;
         window.learnToReadCloud?.attach(() => {
@@ -471,6 +568,7 @@
       if (candidate && openRelease(candidate)) return;
       if (new URLSearchParams(location.search).has('pilot-report')) {
         statusMessage.textContent = 'דוח הפיילוט של טולי טאון';
+        loadingProgress.hidden = true;
         retry.textContent = 'פתיחת המשחק';
         retry.hidden = false;
         retry.onclick = () => location.assign('./');
