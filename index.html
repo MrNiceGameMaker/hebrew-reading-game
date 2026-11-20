@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="טולי טאון">
-  <link rel="manifest" href="manifest.webmanifest?v=1.54">
+  <link rel="manifest" href="manifest.webmanifest?v=1.55">
   <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/tuli-friends-180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/tuli-friends-32.png">
   <title>טולי טאון · Tuli Town</title>
@@ -50,12 +50,26 @@
     }
     #loading-title {
       position: absolute;
-      inset: clamp(8px, 7cqh, 76px) 0 auto;
+      inset: clamp(4px, 1.8cqh, 22px) 0 auto;
+      display: grid;
+      justify-items: center;
+      margin: 0;
+    }
+    .wordmark-image { display: none; }
+    .tuli-wordmark.has-illustration .wordmark-image { display: block; }
+    .tuli-wordmark.has-illustration .wordmark-text { display: none; }
+    #loading-title .wordmark-image {
+      width: min(86cqw, 96cqh, 930px);
+      height: auto;
+      filter: drop-shadow(0 5px 5px #71404f60);
+      animation: wordmark-arrival .3s ease-out both;
+    }
+    #loading-title:not(.has-illustration) .wordmark-text {
       display: flex;
       justify-content: center;
       align-items: center;
       gap: .21em;
-      margin: 0;
+      margin-block-start: 5cqh;
       color: #ffcf60;
       font: 900 clamp(30px, min(15cqh, 12cqw), 136px)/1.14 "Tuli Title", "Arial", sans-serif;
       -webkit-text-stroke: .10em #4a2b4c;
@@ -65,17 +79,8 @@
       filter: drop-shadow(0 .028em 0 #4a2b4c) drop-shadow(0 .054em 0 #ad6f60)
         drop-shadow(0 -.018em 0 #fff2c6);
     }
-    #loading-title span:first-child { transform: rotate(4deg); }
-    #loading-title span:last-child { transform: rotate(-4deg); color: #96ecd6; }
-    #loading-title::before, #loading-title::after {
-      content: "";
-      width: .28em;
-      height: .35em;
-      background: #fff3b3;
-      clip-path: polygon(50% 0, 64% 37%, 100% 50%, 64% 63%, 50% 100%, 36% 63%, 0 50%, 36% 37%);
-      animation: town-sparkle 2.7s ease-in-out infinite;
-    }
-    #loading-title::after { width: .20em; height: .26em; animation-delay: -1.3s; }
+    #loading-title .wordmark-text span:first-child { transform: rotate(4deg); }
+    #loading-title .wordmark-text span:last-child { transform: rotate(-4deg); color: #96ecd6; }
     #loading-controls {
       position: absolute;
       inset-inline: 12px;
@@ -119,9 +124,9 @@
     #loading-progress::-webkit-progress-bar { background: #eadcc4; }
     #loading-progress::-webkit-progress-value { background: #268878; border-radius: 12px; }
     @keyframes greeting { 50% { transform: translateY(-3px) rotate(7deg); } }
-    @keyframes town-sparkle { 50% { transform: translateY(-.10em) scale(1.3); opacity: .7; } }
+    @keyframes wordmark-arrival { from { opacity: .6; transform: translateY(-4px) scale(.97); } }
     @media (prefers-reduced-motion: reduce) {
-      #loading-avatar, #loading-title::before, #loading-title::after { animation: none; }
+      #loading-avatar, #loading-title .wordmark-image { animation: none; }
     }
     #player-name-dialog, #cloud-dialog, #install-intro, #pilot-dialog {
       box-sizing: border-box;
@@ -166,6 +171,7 @@
     #cloud-import-label { margin: 3px 0; }
     .cloud-actions { display: flex; gap: 8px; margin: 6px 0; }
     #install-intro h2, #pilot-dialog h2 { margin: 0 0 8px; }
+    #install-title .wordmark-image { width: min(100%, 330px); height: auto; margin-inline: auto; }
     #install-app, #pilot-save { background: #7fffdd; color: #132737; }
     #pilot-dialog input[type=text] { font: inherit; width: 13em; max-width: 100%; margin: 8px 0; }
     #pilot-dialog:has(#pilot-report:not([hidden])) { width: min(900px, calc(100% - 24px)); }
@@ -227,7 +233,10 @@
       <canvas id="game" aria-label="טולי טאון" tabindex="-1"></canvas>
       <div id="status">
         <img id="loading-town" src="TemplateData/tuli-town-square.webp" width="1440" height="720" fetchpriority="high" decoding="async" alt="">
-        <h1 id="loading-title" aria-label="טולי טאון"><span>טולי</span> <span>טאון</span></h1>
+        <h1 id="loading-title" class="tuli-wordmark" aria-label="טולי טאון">
+          <span class="wordmark-text"><span>טולי</span> <span>טאון</span></span>
+          <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp" width="1200" height="400" decoding="async" alt="">
+        </h1>
         <div id="loading-controls">
           <div id="loading-badge">
             <img id="loading-avatar" width="56" height="56" alt="">
@@ -254,7 +263,10 @@
     </form>
   </dialog>
   <dialog id="install-intro" aria-labelledby="install-title">
-    <h2 id="install-title">טולי טאון</h2>
+    <h2 id="install-title" class="tuli-wordmark" aria-label="טולי טאון">
+      <span class="wordmark-text">טולי טאון</span>
+      <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp" width="1200" height="400" decoding="async" alt="">
+    </h2>
     <p>לחוויה הטובה ביותר בטלפון, מומלץ להתקין את המשחק למסך הבית.</p>
     <p id="install-help" role="status" hidden></p>
     <div class="cloud-actions">
@@ -313,8 +325,8 @@
     <p id="pilot-status" role="status"></p>
     <button type="button" id="pilot-close">סגירה</button>
   </dialog>
-  <script src="TemplateData/CloudProfiles.js?v=1.54"></script>
-  <script src="TemplateData/PilotReport.js?v=1.54"></script>
+  <script src="TemplateData/CloudProfiles.js?v=1.55"></script>
+  <script src="TemplateData/PilotReport.js?v=1.55"></script>
   <script>
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
@@ -323,6 +335,13 @@
     const loadingProgress = document.getElementById('loading-progress');
     const retry = document.getElementById('retry');
     const fullscreen = document.getElementById('fullscreen');
+    for (const illustration of document.querySelectorAll('.wordmark-image')) {
+      const showIllustration = () => {
+        if (illustration.naturalWidth) illustration.parentElement.classList.add('has-illustration');
+      };
+      if (illustration.complete) showIllustration();
+      else illustration.addEventListener('load', showIllustration, { once: true });
+    }
     const touchScreen = matchMedia('(pointer: coarse)');
     const displayedCanvasBounds = canvas.getBoundingClientRect.bind(canvas);
     const viewport = document.getElementById('viewport');
@@ -450,7 +469,7 @@
     }
 
     const build = 'Build/';
-    const version = "1.54";
+    const version = "1.55";
     const versionKey = 'LearnToRead.WebVersion';
     const updateButton = document.getElementById('web-update');
     let releaseRequest;
