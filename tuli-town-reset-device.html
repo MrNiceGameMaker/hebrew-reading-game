@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>איפוס טולי טאון במכשיר הזה</title>
+<style>
+  body { margin: 0; padding: 2rem 1rem; color: #422b48; background: #fff3d9; font: 1rem system-ui, sans-serif; }
+  main { box-sizing: border-box; max-width: 33rem; margin: 0 auto; padding: 1.5rem; background: #fff; border-radius: 1rem; }
+  h1 { margin-top: 0; font-size: 1.65rem; }
+  button, a { font: inherit; }
+  button { min-height: 44px; padding: .5rem 1rem; color: white; background: #843c5c; border: 0; border-radius: .6rem; }
+  button:disabled { opacity: .6; }
+</style>
+<main>
+  <h1>איפוס טולי טאון במכשיר הזה</h1>
+  <p>האיפוס מוחק מהמכשיר הזה את הפרופילים, ההתקדמות והכניסה השמורה למשחק. כדאי לסגור חלונות אחרים של טולי טאון לפני הלחיצה.</p>
+  <button type="button" id="reset">למחוק את השמירה במכשיר הזה</button>
+  <p id="result" role="status"></p>
+  <a href="./">פתיחת טולי טאון</a>
+</main>
+<script>
+  'use strict';
+  const firebasePrefix = 'LearnToRead.Firebase.learntoread-901d0';
+  const gameKeys = new Set(['LearnToRead.LoadingAvatar', 'LearnToRead.WebVersion']);
+  const unityRoots = ['/idbfs/b7e814db7cd1b77dacd0ea65c0fdf2d5', '/idbfs/33bb1552685ff857949340c2fa336f1c'];
+  const isFirebaseKey = key => typeof key === 'string' &&
+    (key === firebasePrefix || key.startsWith(firebasePrefix + '.'));
+  const isUnityKey = key => typeof key === 'string' &&
+    unityRoots.some(root => key === root || key.startsWith(root + '/'));
+
+  function deleteMatchingRecords(name, storeName, belongsToGame) {
+    return new Promise((resolve, reject) => {
+      const open = indexedDB.open(name);
+      open.onupgradeneeded = () => open.transaction.abort();
+      open.onerror = () => reject(open.error);
+      open.onblocked = () => reject(new Error('Database is busy'));
+      open.onsuccess = () => {
+        const db = open.result;
+        if (!db.objectStoreNames.contains(storeName)) {
+          db.close();
+          reject(new Error('Unexpected storage format'));
+          return;
+        }
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        const keys = store.openKeyCursor();
+        keys.onsuccess = () => {
+          const cursor = keys.result;
+          if (!cursor) return;
+          if (belongsToGame(cursor.key)) store.delete(cursor.primaryKey);
+          cursor.continue();
+        };
+        transaction.oncomplete = () => { db.close(); resolve(); };
+        transaction.onabort = () => { db.close(); reject(transaction.error); };
+      };
+    });
+  }
+
+  const reset = document.querySelector('#reset');
+  const result = document.querySelector('#result');
+  reset.addEventListener('click', async () => {
+    reset.disabled = true;
+    result.textContent = 'מאפסים את השמירה…';
+    try {
+      const names = new Set((await indexedDB.databases()).map(database => database.name));
+      if (names.has('/idbfs')) await deleteMatchingRecords('/idbfs', 'FILE_DATA', isUnityKey);
+      if (names.has('LearnToRead.CloudBackup'))
+        await deleteMatchingRecords('LearnToRead.CloudBackup', 'records', isFirebaseKey);
+      for (const key of Object.keys(localStorage))
+        if (gameKeys.has(key) || isFirebaseKey(key)) localStorage.removeItem(key);
+      result.textContent = 'השמירה של טולי טאון במכשיר הזה אופסה.';
+    } catch {
+      result.textContent = 'האיפוס לא הושלם. סגרו חלונות אחרים של המשחק ונסו שוב.';
+      reset.disabled = false;
+    }
+  });
+</script>
+</html>
