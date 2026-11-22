@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-visual">
   <meta name="description" content="משחק לילדי גן להיכרות עם אותיות ומילים בעברית, דרך משחקונים קצרים.">
   <link rel="canonical" href="https://mrnicegamemaker.github.io/hebrew-reading-game/">
   <meta property="og:type" content="website">
@@ -150,10 +150,18 @@
     @media (prefers-reduced-motion: reduce) {
       #loading-avatar, #loading-title .wordmark-image { animation: none; }
     }
-    #player-name-dialog, #cloud-dialog, #install-intro, #pilot-dialog, #device-reset-dialog {
+    body > dialog {
+      --dialog-width: 440px;
+      --inline-gap: max(12px, env(safe-area-inset-left), env(safe-area-inset-right));
+      --block-gap: max(12px, env(safe-area-inset-top), env(safe-area-inset-bottom));
+      position: fixed;
+      inset: var(--dialog-center-y, 50vh) auto auto var(--dialog-center-x, 50vw);
+      transform: translate(-50%, -50%);
+      margin: 0;
       box-sizing: border-box;
-      width: min(440px, calc(100% - 32px));
-      max-height: calc(100% - 32px);
+      width: min(var(--dialog-width), calc(var(--dialog-view-width, 100vw) - 2 * var(--inline-gap)));
+      max-width: none;
+      max-height: calc(var(--dialog-view-height, 100vh) - 2 * var(--block-gap));
       padding: 20px;
       border: 2px solid var(--copper);
       border-radius: 20px;
@@ -161,10 +169,18 @@
       color: var(--plum);
       box-shadow: 0 9px 32px #44274455;
       font: 700 1.15rem system-ui, sans-serif;
+      overflow: auto;
+      overscroll-behavior: contain;
     }
-    #player-name-dialog::backdrop, #cloud-dialog::backdrop, #install-intro::backdrop, #pilot-dialog::backdrop,
-    #device-reset-dialog::backdrop { background: #44274482; }
-    #player-name-form { display: grid; gap: 14px; }
+    :root.sideways-game body > dialog {
+      --inline-gap: max(12px, env(safe-area-inset-top), env(safe-area-inset-bottom));
+      --block-gap: max(12px, env(safe-area-inset-left), env(safe-area-inset-right));
+      transform: translate(-50%, -50%) rotate(90deg);
+    }
+    body > dialog::backdrop { background: #44274482; }
+    #player-name-dialog { --dialog-width: 560px; padding: 12px; }
+    #player-name-form { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+    #player-name-label { flex: 0 0 100%; }
     #player-name-input, #cloud-dialog input:not([type=checkbox]), #pilot-dialog input:not([type=checkbox]) {
       box-sizing: border-box;
       width: 100%;
@@ -175,7 +191,8 @@
       background: #fffbf2;
       font: inherit;
     }
-    #player-name-actions { display: flex; gap: 10px; }
+    #player-name-input { flex: 2 1 170px; width: auto; min-height: 44px; }
+    #player-name-actions { flex: 1 1 168px; display: flex; gap: 8px; }
     #player-name-actions button, #cloud-dialog button, #install-intro button, #open-installed-app, #pilot-dialog button, #device-reset-dialog button {
       min-height: 44px;
       flex: 1;
@@ -192,7 +209,7 @@
       background: var(--gold);
     }
     button:focus-visible, input:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
-    #cloud-dialog { width: min(510px, calc(100% - 32px)); font-weight: 600; }
+    #cloud-dialog { --dialog-width: 510px; font-weight: 600; }
     #cloud-dialog h2 { margin: 0 0 12px; font-size: 1.5rem; }
     .account-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
     .account-heading #cloud-title { margin: 0; }
@@ -204,7 +221,13 @@
     #cloud-credential-hint, #cloud-parent-hint, #cloud-parent-status { margin: 0; color: #704b46; font-size: .9rem; }
     #cloud-account-name { overflow-wrap: anywhere; }
     .cloud-actions { display: flex; gap: 8px; margin: 6px 0; }
-    #install-intro h2, #pilot-dialog h2 { margin: 0 0 8px; }
+    #install-intro { --dialog-width: 720px; }
+    #install-intro[open] { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px; }
+    #install-title { flex: 1 1 185px; margin: 0; }
+    #install-copy { flex: 2 1 266px; min-width: 0; }
+    #install-copy p { margin: 0 0 10px; }
+    #install-copy .cloud-actions { margin: 0; }
+    #pilot-dialog h2 { margin: 0 0 8px; }
     #install-title .wordmark-image { width: min(100%, 330px); height: auto; margin-inline: auto; }
     #install-handoff { line-height: 1.5; }
     #install-progress { font-size: 1.3rem; margin-block: 12px; }
@@ -232,7 +255,7 @@
     }
     #open-installed-app:not([hidden]) { display: grid; place-items: center; text-align: center; text-decoration: none; }
     #pilot-dialog input[type=text] { font: inherit; width: 13em; max-width: 100%; margin: 8px 0; }
-    #pilot-dialog:has(#pilot-report:not([hidden])) { width: min(900px, calc(100% - 24px)); }
+    #pilot-dialog:has(#pilot-report:not([hidden])) { --dialog-width: 900px; }
     #pilot-dialog label { display: block; margin: 12px 0; }
     #pilot-dialog input[type=password] { box-sizing: border-box; width: 100%; padding: 8px; font: inherit; }
     #pilot-table { overflow: auto; }
@@ -318,7 +341,7 @@
         <img id="loading-town" src="TemplateData/tuli-town-square.webp" width="1440" height="720" fetchpriority="high" decoding="async" alt="">
         <h1 id="loading-title" class="tuli-wordmark" aria-label="טולי טאון">
           <span class="wordmark-text"><span>טולי</span> <span>טאון</span></span>
-          <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.65" width="1200" height="400" decoding="async" alt="">
+          <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.66" width="1200" height="400" decoding="async" alt="">
         </h1>
         <div id="loading-controls">
           <div id="loading-badge">
@@ -348,19 +371,21 @@
   <dialog id="install-intro" aria-labelledby="install-title">
     <h2 id="install-title" class="tuli-wordmark" aria-label="טולי טאון">
       <span class="wordmark-text">טולי טאון</span>
-      <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.65" width="1200" height="400" decoding="async" alt="">
+      <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.66" width="1200" height="400" decoding="async" alt="">
     </h2>
-    <p id="install-recommendation">לחוויה הטובה ביותר בטלפון ובטאבלט, מומלץ להתקין את המשחק למסך הבית.</p>
-    <div id="install-progress" hidden>
-      <div id="install-progress-label">מתקין…</div>
-      <div id="install-progress-bar" role="progressbar" aria-labelledby="install-progress-label"></div>
-    </div>
-    <p id="install-help" role="status" hidden></p>
-    <p id="install-handoff" role="status" hidden>כשהאייקון של טולי טאון מופיע במסך הבית, פתחו ממנו את המשחק וסגרו את הלשונית הזו.</p>
-    <div class="cloud-actions">
-      <button type="button" id="install-app">התקנה</button>
-      <a id="open-installed-app" href="./?launch=home&amp;open-app=1" target="_blank" rel="noopener noreferrer" hidden>פתח את טולי טאון</a>
-      <button type="button" id="continue-web">המשך באתר</button>
+    <div id="install-copy">
+      <p id="install-recommendation">לחוויה הטובה ביותר בטלפון ובטאבלט, מומלץ להתקין את המשחק למסך הבית.</p>
+      <div id="install-progress" hidden>
+        <div id="install-progress-label">מתקין…</div>
+        <div id="install-progress-bar" role="progressbar" aria-labelledby="install-progress-label"></div>
+      </div>
+      <p id="install-help" role="status" hidden></p>
+      <p id="install-handoff" role="status" hidden>כשהאייקון של טולי טאון מופיע במסך הבית, פתחו ממנו את המשחק וסגרו את הלשונית הזו.</p>
+      <div class="cloud-actions">
+        <button type="button" id="install-app">התקנה</button>
+        <a id="open-installed-app" href="./?launch=home&amp;open-app=1" target="_blank" rel="noopener noreferrer" hidden>פתח את טולי טאון</a>
+        <button type="button" id="continue-web">המשך באתר</button>
+      </div>
     </div>
   </dialog>
   <dialog id="cloud-dialog" aria-labelledby="cloud-title">
@@ -460,9 +485,9 @@
     <button id="pilot-switch-account" type="button" hidden>מעבר לחשבון המנהל</button>
     <button type="button" id="pilot-close">סגירה</button>
   </dialog>
-  <script src="TemplateData/ParentRecovery.js?v=1.65"></script>
-  <script src="TemplateData/CloudProfiles.js?v=1.65"></script>
-  <script src="TemplateData/PilotReport.js?v=1.65"></script>
+  <script src="TemplateData/ParentRecovery.js?v=1.66"></script>
+  <script src="TemplateData/CloudProfiles.js?v=1.66"></script>
+  <script src="TemplateData/PilotReport.js?v=1.66"></script>
   <script>
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
@@ -620,16 +645,31 @@
       const height = visual && visual.scale === 1 ? Math.round(visual.height) : innerHeight;
       viewport.style.width = width + 'px';
       viewport.style.height = height + 'px';
-      rotated = touchScreen.matches && height > width;
+      // The keyboard shrinks the visible area without changing the layout orientation.
+      rotated = touchScreen.matches && innerHeight > innerWidth;
       stage.classList.toggle('portrait-phone', rotated);
       if (rotated) {
         stage.style.setProperty('--stage-width', height + 'px');
         stage.style.setProperty('--stage-height', width + 'px');
       }
+      fitDialogs();
+    }
+    function fitDialogs() {
+      const visual = window.visualViewport;
+      const width = visual?.width ?? innerWidth;
+      const height = visual?.height ?? innerHeight;
+      const root = document.documentElement;
+      // Modal dialogs render in the browser's top layer, outside the stage transform.
+      root.classList.toggle('sideways-game', rotated);
+      root.style.setProperty('--dialog-center-x', (width / 2 + (visual?.offsetLeft ?? 0)) + 'px');
+      root.style.setProperty('--dialog-center-y', (height / 2 + (visual?.offsetTop ?? 0)) + 'px');
+      root.style.setProperty('--dialog-view-width', (rotated ? height : width) + 'px');
+      root.style.setProperty('--dialog-view-height', (rotated ? width : height) + 'px');
     }
     fitStage();
     window.addEventListener('resize', fitStage);
     window.visualViewport?.addEventListener('resize', fitStage);
+    window.visualViewport?.addEventListener('scroll', fitDialogs);
     touchScreen.addEventListener?.('change', fitStage);
 
     // Unity sizes its render buffer from the canvas rectangle. Supply its
@@ -669,7 +709,7 @@
     }
 
     const build = 'Build/';
-    const version = "1.65";
+    const version = "1.66";
     const versionKey = 'LearnToRead.WebVersion';
     const deviceResetKey = 'LearnToRead.DeviceReset';
     const launchParams = new URLSearchParams(location.search);
