@@ -10,13 +10,17 @@
   const firestoreEndpoint = 'https://firestore.googleapis.com/v1/' + firestoreDocuments;
   const keyQuery = '?key=' + encodeURIComponent(apiKey);
   const reportOnly = new URLSearchParams(location.search).has('pilot-report');
+  const resetPage = new URLSearchParams(location.search).has('reset-device');
   const sessionKey = 'LearnToRead.Firebase.' + project;
   const accountKey = id => sessionKey + '.profiles.' + id;
   const checkpointKey = id => accountKey(id) + '.checkpoint';
   const backupValues = new Map();
   const storageFailures = new Set();
+  const isGameKey = key => typeof key === 'string' &&
+    (key === sessionKey || key.startsWith(sessionKey + '.'));
   let lastStorageWrite = 0;
   let backupDatabase;
+  let backupUnavailable = false;
   // A family with many drawings can exhaust localStorage. Keep its newest
   // records in IndexedDB when that happens, including across browser restarts.
   const backupReady = new Promise(resolve => {
@@ -24,8 +28,10 @@
     try { open = indexedDB.open('LearnToRead.CloudBackup', 1); }
     catch { resolve(); return; }
     open.onupgradeneeded = () => open.result.createObjectStore('records');
-    open.onerror = () => resolve();
-    open.onblocked = () => resolve();
+    open.onerror = open.onblocked = () => {
+      backupUnavailable = true;
+      resolve();
+    };
     open.onsuccess = () => {
       backupDatabase = open.result;
       backupDatabase.onversionchange = () => backupDatabase.close();
@@ -34,7 +40,7 @@
       cursor.onsuccess = () => {
         const entry = cursor.result;
         if (!entry) return;
-        if (entry.key.startsWith(sessionKey)) backupValues.set(entry.key, entry.value);
+        if (isGameKey(entry.key)) backupValues.set(entry.key, entry.value);
         entry.continue();
       };
       transaction.oncomplete = transaction.onabort = () => resolve();
@@ -99,6 +105,27 @@
   function failedLocalSave(key) {
     storageFailures.add(key);
     updateStatus(status);
+  }
+
+  async function clearDevice() {
+    if (!resetPage) throw new Error('Open the local reset screen first');
+    await backupReady;
+    if (!backupDatabase || backupUnavailable) throw new Error('Local backup is unavailable');
+    await new Promise((resolve, reject) => {
+      const transaction = backupDatabase.transaction('records', 'readwrite');
+      const cursor = transaction.objectStore('records').openKeyCursor();
+      cursor.onsuccess = () => {
+        const entry = cursor.result;
+        if (!entry) return;
+        if (isGameKey(entry.key)) transaction.objectStore('records').delete(entry.primaryKey);
+        entry.continue();
+      };
+      transaction.oncomplete = resolve;
+      transaction.onabort = () => reject(transaction.error);
+    });
+    backupValues.clear();
+    for (const key of Object.keys(localStorage))
+      if (isGameKey(key) || key === 'LearnToRead.LoadingAvatar') localStorage.removeItem(key);
   }
   function normalize(snapshot) {
     return {
@@ -485,12 +512,14 @@
 
   window.learnToReadCloud = {
     ready: backupReady.then(() => {
+      if (resetPage) return;
       session = read(sessionKey, null);
       cached = session ? read(accountKey(session.id), empty()) : empty();
       checkpoint = session ? read(checkpointKey(session.id), empty()) : empty();
       status = session ? 'בודקים את השמירה בענן…' : '';
       if (session && !reportOnly) sync();
     }),
+    clearDevice,
     hasAccount: () => !!session && !authRequired,
     pilotAccount: () => authRequired ? null : session?.id,
     pilotEmailAccount: () => !!session && !session.username,

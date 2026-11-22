@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="טולי טאון">
-  <link rel="manifest" href="manifest.webmanifest?v=1.61">
+  <link rel="manifest" href="manifest.webmanifest?v=1.62">
   <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/tuli-friends-180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/tuli-friends-32.png">
   <title>טולי טאון · Tuli Town</title>
@@ -137,7 +137,7 @@
     @media (prefers-reduced-motion: reduce) {
       #loading-avatar, #loading-title .wordmark-image { animation: none; }
     }
-    #player-name-dialog, #cloud-dialog, #install-intro, #pilot-dialog {
+    #player-name-dialog, #cloud-dialog, #install-intro, #pilot-dialog, #device-reset-dialog {
       box-sizing: border-box;
       width: min(440px, calc(100% - 32px));
       max-height: calc(100% - 32px);
@@ -149,7 +149,8 @@
       box-shadow: 0 9px 32px #44274455;
       font: 700 1.15rem system-ui, sans-serif;
     }
-    #player-name-dialog::backdrop, #cloud-dialog::backdrop, #install-intro::backdrop, #pilot-dialog::backdrop { background: #44274482; }
+    #player-name-dialog::backdrop, #cloud-dialog::backdrop, #install-intro::backdrop, #pilot-dialog::backdrop,
+    #device-reset-dialog::backdrop { background: #44274482; }
     #player-name-form { display: grid; gap: 14px; }
     #player-name-input, #cloud-dialog input:not([type=checkbox]), #pilot-dialog input:not([type=checkbox]) {
       box-sizing: border-box;
@@ -162,7 +163,7 @@
       font: inherit;
     }
     #player-name-actions { display: flex; gap: 10px; }
-    #player-name-actions button, #cloud-dialog button, #install-intro button, #pilot-dialog button {
+    #player-name-actions button, #cloud-dialog button, #install-intro button, #pilot-dialog button, #device-reset-dialog button {
       min-height: 44px;
       flex: 1;
       border: 1px solid var(--copper);
@@ -180,6 +181,10 @@
     button:focus-visible, input:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
     #cloud-dialog { width: min(510px, calc(100% - 32px)); font-weight: 600; }
     #cloud-dialog h2 { margin: 0 0 12px; font-size: 1.5rem; }
+    .account-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .account-heading #cloud-title { margin: 0; }
+    .account-heading #cloud-device-reset { flex: none; font-size: .9rem; padding-inline: 12px; }
+    #cloud-dialog:has(#cloud-parent-form:not([hidden])) #cloud-device-reset { display: none; }
     #cloud-auth:not([hidden]), #cloud-parent-form:not([hidden]) { display: grid; gap: 9px; }
     #cloud-dialog label { font-size: .95rem; }
     #cloud-import-label { margin: 3px 0; }
@@ -197,6 +202,9 @@
     #pilot-table th, #pilot-table td { padding: 9px; border-bottom: 1px solid var(--copper); text-align: start; }
     #cloud-status { min-height: 1.4em; margin: 12px 0 6px; font-size: .95rem; }
     #cloud-dialog button:disabled { opacity: .6; }
+    #device-reset-dialog h2 { margin: 0 0 8px; }
+    #device-reset-dialog p { font-size: 1rem; font-weight: 600; }
+    #device-reset-confirm { background: #843c5c !important; color: white !important; }
     #retry {
       justify-self: center;
       min-height: 48px;
@@ -249,7 +257,7 @@
         <img id="loading-town" src="TemplateData/tuli-town-square.webp" width="1440" height="720" fetchpriority="high" decoding="async" alt="">
         <h1 id="loading-title" class="tuli-wordmark" aria-label="טולי טאון">
           <span class="wordmark-text"><span>טולי</span> <span>טאון</span></span>
-          <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.61" width="1200" height="400" decoding="async" alt="">
+          <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.62" width="1200" height="400" decoding="async" alt="">
         </h1>
         <div id="loading-controls">
           <div id="loading-badge">
@@ -279,7 +287,7 @@
   <dialog id="install-intro" aria-labelledby="install-title">
     <h2 id="install-title" class="tuli-wordmark" aria-label="טולי טאון">
       <span class="wordmark-text">טולי טאון</span>
-      <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.61" width="1200" height="400" decoding="async" alt="">
+      <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.62" width="1200" height="400" decoding="async" alt="">
     </h2>
     <p>לחוויה הטובה ביותר בטלפון, מומלץ להתקין את המשחק למסך הבית.</p>
     <p id="install-help" role="status" hidden></p>
@@ -289,7 +297,10 @@
     </div>
   </dialog>
   <dialog id="cloud-dialog" aria-labelledby="cloud-title">
-    <h2 id="cloud-title">החשבון שלי</h2>
+    <header class="account-heading">
+      <h2 id="cloud-title">החשבון שלי</h2>
+      <button id="cloud-device-reset" type="button" hidden>איפוס במכשיר הזה</button>
+    </header>
     <form id="cloud-auth" hidden>
       <label id="cloud-identifier-label" for="cloud-email">שם משתמש</label>
       <input id="cloud-email" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" dir="auto" maxlength="254" required>
@@ -335,6 +346,16 @@
     <p id="cloud-status" role="status"></p>
     <button id="cloud-close" type="button">חזרה למשחק</button>
   </dialog>
+  <dialog id="device-reset-dialog" aria-labelledby="device-reset-title">
+    <h2 id="device-reset-title">להתחיל מחדש במכשיר הזה?</h2>
+    <p>השמירות המקומיות והכניסה לחשבון יימחקו מהמכשיר. משחקים שכבר סונכרנו לענן יהיו זמינים כשתתחברו שוב.</p>
+    <p>לפני האיפוס, סגרו עותקים אחרים של טולי טאון שפתוחים במכשיר.</p>
+    <div class="cloud-actions">
+      <button id="device-reset-cancel" type="button" autofocus>ביטול</button>
+      <button id="device-reset-confirm" type="button">מחיקה והתחלה מחדש</button>
+    </div>
+    <p id="device-reset-status" role="status"></p>
+  </dialog>
   <dialog id="pilot-dialog" aria-labelledby="pilot-title">
     <h2 id="pilot-title">פיילוט טולי טאון</h2>
     <section id="pilot-settings">
@@ -363,9 +384,9 @@
     <button id="pilot-switch-account" type="button" hidden>מעבר לחשבון המנהל</button>
     <button type="button" id="pilot-close">סגירה</button>
   </dialog>
-  <script src="TemplateData/ParentRecovery.js?v=1.61"></script>
-  <script src="TemplateData/CloudProfiles.js?v=1.61"></script>
-  <script src="TemplateData/PilotReport.js?v=1.61"></script>
+  <script src="TemplateData/ParentRecovery.js?v=1.62"></script>
+  <script src="TemplateData/CloudProfiles.js?v=1.62"></script>
+  <script src="TemplateData/PilotReport.js?v=1.62"></script>
   <script>
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
@@ -508,8 +529,21 @@
     }
 
     const build = 'Build/';
-    const version = "1.61";
+    const version = "1.62";
     const versionKey = 'LearnToRead.WebVersion';
+    const deviceResetKey = 'LearnToRead.DeviceReset';
+    const launchParams = new URLSearchParams(location.search);
+    try { window.learnToReadDeviceReset = sessionStorage.getItem(deviceResetKey) === '1'; }
+    catch { /* Storage may be disabled. */ }
+    const deviceResetAction = document.getElementById('cloud-device-reset');
+    if (!launchParams.has('pilot-report')) {
+      deviceResetAction.hidden = false;
+      deviceResetAction.onclick = () => {
+        const url = new URL(location.href);
+        url.searchParams.set('reset-device', '1');
+        location.assign(url.href);
+      };
+    }
     const updateButton = document.getElementById('web-update');
     let releaseRequest;
     let lastReleaseCheck = -Infinity;
@@ -621,7 +655,41 @@
         fullscreen.onclick = () => document.documentElement.requestFullscreen().catch(console.warn);
       }).catch(showError);
     };
+    function openDeviceReset() {
+      const dialog = document.getElementById('device-reset-dialog');
+      const cancel = document.getElementById('device-reset-cancel');
+      const confirm = document.getElementById('device-reset-confirm');
+      const feedback = document.getElementById('device-reset-status');
+      const gameUrl = new URL(location.href);
+      gameUrl.searchParams.delete('reset-device');
+      const openGame = () => location.replace(gameUrl.href);
+      cancel.onclick = openGame;
+      dialog.addEventListener('cancel', event => {
+        event.preventDefault();
+        if (!cancel.disabled) openGame();
+      });
+      confirm.onclick = async () => {
+        cancel.disabled = confirm.disabled = true;
+        feedback.textContent = 'מאפסים את השמירה…';
+        try {
+          // Confirm that the one-shot signal can be retained before deleting anything.
+          sessionStorage.setItem(deviceResetKey, 'ready');
+          await window.learnToReadCloud.clearDevice();
+          sessionStorage.setItem(deviceResetKey, '1');
+          openGame();
+        } catch {
+          feedback.textContent = 'האיפוס לא הושלם. סגרו חלונות אחרים של המשחק ונסו שוב.';
+          cancel.disabled = confirm.disabled = false;
+        }
+      };
+      statusPanel.hidden = true;
+      dialog.showModal();
+    }
     async function startGame() {
+      if (launchParams.has('reset-device')) {
+        openDeviceReset();
+        return;
+      }
       if (window.learnToReadCloud?.openParentLink()) {
         statusPanel.hidden = true;
         return;
