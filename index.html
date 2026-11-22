@@ -205,6 +205,7 @@
     .cloud-actions { display: flex; gap: 8px; margin: 6px 0; }
     #install-intro h2, #pilot-dialog h2 { margin: 0 0 8px; }
     #install-title .wordmark-image { width: min(100%, 330px); height: auto; margin-inline: auto; }
+    #install-handoff { line-height: 1.5; }
     #pilot-dialog input[type=text] { font: inherit; width: 13em; max-width: 100%; margin: 8px 0; }
     #pilot-dialog:has(#pilot-report:not([hidden])) { width: min(900px, calc(100% - 24px)); }
     #pilot-dialog label { display: block; margin: 12px 0; }
@@ -324,8 +325,9 @@
       <span class="wordmark-text">טולי טאון</span>
       <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.63" width="1200" height="400" decoding="async" alt="">
     </h2>
-    <p>לחוויה הטובה ביותר בטלפון, מומלץ להתקין את המשחק למסך הבית.</p>
+    <p id="install-recommendation">לחוויה הטובה ביותר בטלפון ובטאבלט, מומלץ להתקין את המשחק למסך הבית.</p>
     <p id="install-help" role="status" hidden></p>
+    <p id="install-handoff" role="status" hidden>כשהאייקון של טולי טאון מופיע במסך הבית, פתחו ממנו את המשחק וסגרו את הלשונית הזו.</p>
     <div class="cloud-actions">
       <button type="button" id="install-app">התקנה</button>
       <button type="button" id="continue-web">המשך באתר</button>
@@ -456,19 +458,28 @@
     });
     const installIntro = document.getElementById('install-intro');
     const installHelp = document.getElementById('install-help');
+    const installButton = document.getElementById('install-app');
+    const installHandoff = document.getElementById('install-handoff');
     const appleMobile = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
       navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
     const mobileBrowser = appleMobile || /Android/.test(navigator.userAgent);
     const standalone = matchMedia('(display-mode: standalone)').matches ||
       matchMedia('(display-mode: fullscreen)').matches || navigator.standalone;
+    function showInstallHandoff() {
+      if (!installIntro.open) return;
+      document.getElementById('install-recommendation').hidden = true;
+      installHelp.hidden = installButton.hidden = true;
+      installHandoff.hidden = false;
+      statusPanel.hidden = true;
+    }
     document.getElementById('continue-web').onclick = () => installIntro.close();
-    document.getElementById('install-app').onclick = async () => {
+    installButton.onclick = async () => {
       if (installPrompt) {
         const prompt = installPrompt;
         installPrompt = null;
         try {
           await prompt.prompt();
-          if ((await prompt.userChoice).outcome === 'accepted') installIntro.close();
+          if ((await prompt.userChoice).outcome === 'accepted') showInstallHandoff();
           return;
         } catch { /* The browser may have dismissed its install prompt. */ }
       }
@@ -476,10 +487,11 @@
       installHelp.textContent = appleMobile
         ? 'ב־Safari פתחו את תפריט השיתוף, בחרו ״הוספה למסך הבית״ והפעילו ״פתיחה כיישום אינטרנט״.'
         : 'בתפריט הדפדפן ⋮ בחרו ״התקנת אפליקציה״ או ״הוספה למסך הבית״.';
+      installHandoff.hidden = false;
     };
     window.addEventListener('appinstalled', () => {
       installPrompt = null;
-      if (installIntro.open) installIntro.close();
+      showInstallHandoff();
     });
     let rotated = false;
     let loadingAvatar = '1f407';
@@ -774,6 +786,7 @@
       if (mobileBrowser && !standalone) {
         installIntro.showModal();
         await new Promise(resolve => installIntro.addEventListener('close', resolve, { once: true }));
+        statusPanel.hidden = false;
       }
       document.body.appendChild(loader);
       document.addEventListener('visibilitychange', offerUpdate);
