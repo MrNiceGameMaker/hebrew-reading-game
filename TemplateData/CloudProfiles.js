@@ -8,6 +8,7 @@
   const tokenEndpoint = 'https://securetoken.googleapis.com/v1/token';
   const firestoreEndpoint = 'https://firestore.googleapis.com/v1/projects/' + project + '/databases/(default)/documents/families/';
   const keyQuery = '?key=' + encodeURIComponent(apiKey);
+  const reportOnly = new URLSearchParams(location.search).has('pilot-report');
   const sessionKey = 'LearnToRead.Firebase.' + project;
   const accountKey = id => sessionKey + '.profiles.' + id;
   const checkpointKey = id => accountKey(id) + '.checkpoint';
@@ -178,6 +179,15 @@
     });
   }
 
+  async function usernameAddress(username) {
+    // Firebase owns the credentials. Keep the username-to-address mapping deterministic
+    // so no public lookup collection or real email address is needed.
+    const bytes = new TextEncoder().encode('tuli-town-username-v1:' + username);
+    const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+    const id = [...hash.slice(0, 24)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    return 'tulitown-' + id + '@example.com';
+  }
+
   async function userToken(account) {
     if (!account.token || account.expires < Date.now() + 60000) {
       const result = await request(tokenEndpoint + keyQuery, {
@@ -228,6 +238,10 @@
   function saveCheckpoint() {
     if (session) write(checkpointKey(session.id), checkpoint);
   }
+  function checkpointLocalChanges() {
+    checkpoint = merge(read(checkpointKey(session.id), empty()), cached);
+    saveCheckpoint();
+  }
   function updateStatus(message) {
     status = message;
     document.getElementById('cloud-status').textContent = storageFailures.size
@@ -249,7 +263,7 @@
       'USER_NOT_FOUND', 'INVALID_GRANT'].includes(error.code);
   }
   function sync(keepalive = false) {
-    if (!session || authRequired) return Promise.resolve(false);
+    if (reportOnly || !session || authRequired) return Promise.resolve(false);
     if (syncOperation) return syncOperation;
     clearTimeout(syncTimer);
     const account = session;
@@ -262,7 +276,7 @@
       cache();
       refreshIfNeeded();
       if (!same(checkpoint, merged)) schedule();
-      else updateStatus(same(checkpoint, cached) ? 'הפרופילים מסונכרנים' : 'השינויים הבאים יישמרו בענן בסוף המשחקון');
+      else updateStatus(same(checkpoint, cached) ? 'שמירות המשחק מסונכרנות' : 'השינויים הבאים יישמרו בענן בסוף המשחקון');
       return true;
     }).catch(error => {
       if (session !== account) return false;
@@ -272,6 +286,14 @@
       return false;
     }).finally(() => { syncOperation = null; });
     return syncOperation;
+  }
+
+  async function syncNow() {
+    const account = session;
+    if (reportOnly || !account || authRequired) return;
+    checkpointLocalChanges();
+    if (syncOperation) await syncOperation;
+    if (session === account) return sync();
   }
 
   function importLocal(remote) {
@@ -289,42 +311,84 @@
   const dialog = document.getElementById('cloud-dialog');
   const form = document.getElementById('cloud-auth');
   const signedIn = document.getElementById('cloud-signed-in');
-  const email = document.getElementById('cloud-email');
+  const identifier = document.getElementById('cloud-email');
   const password = document.getElementById('cloud-password');
   const importCheckbox = document.getElementById('cloud-import');
+  const legacy = document.getElementById('cloud-legacy');
   const submitButtons = [...dialog.querySelectorAll('button, input')];
   let sending = false;
+  let emailMode = reportOnly;
 
   function renderDialog() {
     form.hidden = !!session && !authRequired;
     signedIn.hidden = !form.hidden;
-    document.getElementById('cloud-import-label').hidden = !anonymous?.profiles.length;
+    document.getElementById('cloud-account-name').textContent = session?.label ? 'מחובר לחשבון ' + session.label : '';
+    document.getElementById('cloud-sync-now').hidden = reportOnly;
+    document.getElementById('cloud-import-label').hidden = reportOnly || !anonymous?.profiles.length;
+    document.getElementById('cloud-identifier-label').textContent = emailMode ? 'כתובת דוא״ל' : 'שם משתמש';
+    identifier.type = emailMode ? 'email' : 'text';
+    identifier.dir = emailMode ? 'ltr' : 'auto';
+    document.getElementById('cloud-credential-hint').hidden = emailMode;
+    document.getElementById('cloud-register').hidden = emailMode && !reportOnly;
+    document.getElementById('cloud-recovery').hidden = !emailMode;
+    legacy.hidden = reportOnly;
+    legacy.textContent = emailMode ? 'כניסה בשם משתמש' : 'יש לי חשבון עם דוא״ל';
     updateStatus(status);
   }
+
+  legacy.onclick = () => {
+    emailMode = !emailMode;
+    identifier.value = '';
+    password.value = '';
+    status = '';
+    renderDialog();
+    identifier.focus();
+  };
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
     if (sending) return;
     const operation = event.submitter?.value || 'login';
-    const credentials = { email: email.value.trim(), password: password.value, returnSecureToken: true };
+    const registering = operation === 'register';
+    const label = identifier.value.trim();
+    const username = emailMode ? '' : label.normalize('NFKC').toLowerCase();
+    if (!emailMode && !/^[\p{L}\p{N}][\p{L}\p{N}_.-]{2,23}$/u.test(username)) {
+      updateStatus('בחרו שם משתמש באורך 3–24 תווים, עם אותיות או ספרות. אפשר גם מקף, נקודה וקו תחתון.');
+      identifier.focus();
+      return;
+    }
+    if (!emailMode && registering && password.value.length < 8) {
+      updateStatus('בחרו סיסמה באורך שמונה תווים לפחות.');
+      password.focus();
+      return;
+    }
+    if (emailMode && !identifier.checkValidity()) {
+      identifier.reportValidity();
+      return;
+    }
+    if (registering && emailMode && !reportOnly || operation === 'recover' && !emailMode) return;
+    let created = false;
     sending = true;
     submitButtons.forEach(control => { control.disabled = true; });
-    updateStatus('מתחברים ובודקים את הפרופילים…');
+    updateStatus(registering ? 'פותחים חשבון…' : 'מתחברים וטוענים שמירות…');
     try {
+      const email = emailMode ? label : await usernameAddress(username);
       if (operation === 'recover') {
-        await authenticate('sendOobCode', { requestType: 'PASSWORD_RESET', email: credentials.email });
-        updateStatus('בקשת האיפוס נשלחה. בדקו את תיבת הדואר');
+        await authenticate('sendOobCode', { requestType: 'PASSWORD_RESET', email });
+        updateStatus('אם קיים חשבון בכתובת הזו, יגיע אליו קישור לאיפוס הסיסמה.');
         return;
       }
-      const registering = operation === 'register';
-      const login = await authenticate(registering ? 'signUp' : 'signInWithPassword', credentials);
+      const login = await authenticate(registering ? 'signUp' : 'signInWithPassword', {
+        email, password: password.value, returnSecureToken: true
+      });
+      created = registering;
       const account = {
-        id: login.localId, token: login.idToken, refresh: login.refreshToken,
+        id: login.localId, token: login.idToken, refresh: login.refreshToken, label, username,
         expires: Date.now() + Number(login.expiresIn) * 1000
       };
       if (!account.id || !account.token || !account.refresh) throw new Error('Incomplete Firebase sign-in');
       const stored = read(checkpointKey(account.id), empty());
-      const merged = await synchronizeAccount(account, remote => {
+      const merged = reportOnly ? stored : await synchronizeAccount(account, remote => {
         const existing = merge(remote, stored);
         return importCheckbox.checked && anonymous?.profiles.length ? importLocal(existing) : existing;
       });
@@ -337,25 +401,30 @@
       cache();
       saveCheckpoint();
       write(sessionKey, account);
-      updateStatus('הפרופילים מסונכרנים');
+      updateStatus(reportOnly ? 'מחוברים' : 'שמירות המשחק מסונכרנות');
+      importCheckbox.checked = false;
       refreshPending = true;
       refreshGame?.();
       dialog.close();
       window.learnToReadPilot?.accountChanged();
     } catch (error) {
+      if (operation === 'recover' && error.code === 'EMAIL_NOT_FOUND') {
+        updateStatus('אם קיים חשבון בכתובת הזו, יגיע אליו קישור לאיפוס הסיסמה.');
+        return;
+      }
       const messages = {
-        INVALID_LOGIN_CREDENTIALS: 'כתובת הדוא״ל או הסיסמה שגויה',
-        INVALID_PASSWORD: 'כתובת הדוא״ל או הסיסמה שגויה',
-        EMAIL_NOT_FOUND: 'החשבון עדיין לא קיים. אפשר לפתוח חשבון הורה כאן',
-        EMAIL_EXISTS: 'כבר יש חשבון עם כתובת זו. אפשר להתחבר או לאפס סיסמה',
-        INVALID_EMAIL: 'בדקו את כתובת הדוא״ל',
-        WEAK_PASSWORD: 'בחרו סיסמה באורך שש תווים לפחות',
+        INVALID_LOGIN_CREDENTIALS: emailMode ? 'בדקו את כתובת הדוא״ל והסיסמה' : 'בדקו את שם המשתמש והסיסמה',
+        INVALID_PASSWORD: emailMode ? 'בדקו את כתובת הדוא״ל והסיסמה' : 'בדקו את שם המשתמש והסיסמה',
+        EMAIL_NOT_FOUND: emailMode ? 'בדקו את כתובת הדוא״ל והסיסמה' : 'בדקו את שם המשתמש והסיסמה',
+        EMAIL_EXISTS: emailMode ? 'הכתובת כבר רשומה. אפשר להתחבר או לאפס סיסמה' : 'שם המשתמש תפוס. אפשר להתחבר או לבחור שם אחר',
+        INVALID_EMAIL: emailMode ? 'בדקו את כתובת הדוא״ל' : 'לא הצלחנו להשתמש בשם המשתמש הזה',
+        WEAK_PASSWORD: 'בחרו סיסמה ארוכה יותר',
         TOO_MANY_ATTEMPTS_TRY_LATER: 'ניסיונות רבים מדי. אפשר לנסות שוב מאוחר יותר'
       };
-      updateStatus(messages[error.code] || 'הפעולה לא הושלמה. אפשר לנסות שוב');
+      updateStatus(created ? 'החשבון נוצר. התחברו שוב כדי לטעון את שמירות המשחק.'
+        : messages[error.code] || 'הפעולה לא הושלמה. אפשר לנסות שוב');
     } finally {
       sending = false;
-      credentials.password = '';
       password.value = '';
       submitButtons.forEach(control => { control.disabled = false; });
       renderDialog();
@@ -368,8 +437,12 @@
     password.value = '';
     document.getElementById('game').focus();
   });
-  document.getElementById('cloud-sync-now').onclick = () => sync();
-  document.getElementById('cloud-sign-out').onclick = () => {
+  document.getElementById('cloud-sync-now').onclick = syncNow;
+  document.getElementById('cloud-sign-out').onclick = async () => {
+    if (sending) return;
+    sending = true;
+    submitButtons.forEach(control => { control.disabled = true; });
+    await syncNow();
     clearTimeout(syncTimer);
     switchingAccount = true;
     session = null;
@@ -378,9 +451,17 @@
     write(sessionKey, null);
     cached = empty();
     checkpoint = empty();
+    identifier.value = '';
+    importCheckbox.checked = false;
+    emailMode = reportOnly;
+    status = '';
+    sending = false;
+    submitButtons.forEach(control => { control.disabled = false; });
+    renderDialog();
     refreshPending = true;
     refreshGame?.();
-    dialog.close();
+    if (reportOnly) identifier.focus();
+    else dialog.close();
   };
 
   window.learnToReadCloud = {
@@ -389,9 +470,11 @@
       cached = session ? read(accountKey(session.id), empty()) : empty();
       checkpoint = session ? read(checkpointKey(session.id), empty()) : empty();
       status = session ? 'בודקים את השמירה בענן…' : '';
-      if (session) sync();
+      if (session && !reportOnly) sync();
     }),
+    hasAccount: () => !!session && !authRequired,
     pilotAccount: () => authRequired ? null : session?.id,
+    pilotEmailAccount: () => !!session && !session.username,
     async pilotDocument(path, data, keepalive = false) {
       const account = session;
       if (!account || authRequired) throw new Error('Sign in required');
@@ -426,7 +509,7 @@
     },
     async verifyPilotEmail(send) {
       const account = session;
-      if (!account || authRequired) throw new Error('Sign in required');
+      if (!account || authRequired || account.username) throw new Error('An email account is required');
       if (!send) account.expires = 0;
       await userToken(account);
       if (session !== account) throw new Error('The parent changed');
@@ -460,8 +543,7 @@
       cached = merge(merge(read(accountKey(session.id), empty()), cached), changed);
       cache();
       if (syncAtCheckpoint) {
-        checkpoint = merge(read(checkpointKey(session.id), empty()), cached);
-        saveCheckpoint();
+        checkpointLocalChanges();
         updateStatus('שומר בענן…');
         schedule();
       } else {
@@ -483,6 +565,8 @@
   window.addEventListener('online', () => sync());
   document.addEventListener('visibilitychange', () => sync(document.hidden));
   window.addEventListener('storage', event => {
-    if (event.key === sessionKey && session && !storageValue(decode(event.newValue, null))) location.reload();
+    if (event.key !== sessionKey) return;
+    const other = storageValue(decode(event.newValue, null));
+    if ((session?.id ?? '') !== (other?.id ?? '')) location.reload();
   });
 })();

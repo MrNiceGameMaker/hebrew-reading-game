@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="טולי טאון">
-  <link rel="manifest" href="manifest.webmanifest?v=1.59">
+  <link rel="manifest" href="manifest.webmanifest?v=1.60">
   <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/tuli-friends-180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/tuli-friends-32.png">
   <title>טולי טאון · Tuli Town</title>
@@ -182,6 +182,8 @@
     #cloud-auth:not([hidden]) { display: grid; gap: 9px; }
     #cloud-auth label { font-size: .95rem; }
     #cloud-import-label { margin: 3px 0; }
+    #cloud-credential-hint { margin: 0; color: #704b46; font-size: .9rem; }
+    #cloud-account-name { overflow-wrap: anywhere; }
     .cloud-actions { display: flex; gap: 8px; margin: 6px 0; }
     #install-intro h2, #pilot-dialog h2 { margin: 0 0 8px; }
     #install-title .wordmark-image { width: min(100%, 330px); height: auto; margin-inline: auto; }
@@ -246,7 +248,7 @@
         <img id="loading-town" src="TemplateData/tuli-town-square.webp" width="1440" height="720" fetchpriority="high" decoding="async" alt="">
         <h1 id="loading-title" class="tuli-wordmark" aria-label="טולי טאון">
           <span class="wordmark-text"><span>טולי</span> <span>טאון</span></span>
-          <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.59" width="1200" height="400" decoding="async" alt="">
+          <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.60" width="1200" height="400" decoding="async" alt="">
         </h1>
         <div id="loading-controls">
           <div id="loading-badge">
@@ -276,7 +278,7 @@
   <dialog id="install-intro" aria-labelledby="install-title">
     <h2 id="install-title" class="tuli-wordmark" aria-label="טולי טאון">
       <span class="wordmark-text">טולי טאון</span>
-      <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.59" width="1200" height="400" decoding="async" alt="">
+      <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.60" width="1200" height="400" decoding="async" alt="">
     </h2>
     <p>לחוויה הטובה ביותר בטלפון, מומלץ להתקין את המשחק למסך הבית.</p>
     <p id="install-help" role="status" hidden></p>
@@ -286,20 +288,25 @@
     </div>
   </dialog>
   <dialog id="cloud-dialog" aria-labelledby="cloud-title">
-    <h2 id="cloud-title">סנכרון להורים</h2>
+    <h2 id="cloud-title">החשבון שלי</h2>
     <form id="cloud-auth" hidden>
-      <label for="cloud-email">דוא״ל של ההורה</label>
-      <input id="cloud-email" type="email" autocomplete="username" dir="ltr" maxlength="254" required>
+      <label id="cloud-identifier-label" for="cloud-email">שם משתמש</label>
+      <input id="cloud-email" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" dir="auto" maxlength="254" required>
       <label for="cloud-password">סיסמה</label>
       <input id="cloud-password" type="password" autocomplete="current-password" dir="ltr" minlength="6" maxlength="100" required>
-      <label id="cloud-import-label" hidden><input id="cloud-import" type="checkbox" checked> הוספת הפרופילים השמורים במכשיר לחשבון</label>
+      <p id="cloud-credential-hint">בחשבון חדש בחרו שם משתמש שאינו השם המלא של הילד, ושמרו את שם המשתמש והסיסמה.</p>
+      <label id="cloud-import-label" hidden><input id="cloud-import" type="checkbox"> לצרף לחשבון את המשחקים שכבר שמורים במכשיר</label>
       <div class="cloud-actions">
         <button id="cloud-login" type="submit" value="login">כניסה</button>
-        <button id="cloud-register" type="submit" value="register">פתיחת חשבון הורה</button>
+        <button id="cloud-register" type="submit" value="register">פתיחת חשבון</button>
       </div>
-      <button id="cloud-recovery" type="submit" value="recover" formnovalidate>איפוס סיסמה</button>
+      <div class="cloud-actions">
+        <button id="cloud-legacy" type="button">יש לי חשבון עם דוא״ל</button>
+        <button id="cloud-recovery" type="submit" value="recover" formnovalidate hidden>איפוס סיסמה בדוא״ל</button>
+      </div>
     </form>
     <div id="cloud-signed-in" hidden>
+      <p id="cloud-account-name"></p>
       <div class="cloud-actions">
         <button id="cloud-sync-now" type="button">סנכרן עכשיו</button>
         <button id="cloud-sign-out" type="button">יציאה מהחשבון</button>
@@ -334,10 +341,11 @@
       <div id="pilot-table"></div>
     </section>
     <p id="pilot-status" role="status"></p>
+    <button id="pilot-switch-account" type="button" hidden>מעבר לחשבון המנהל</button>
     <button type="button" id="pilot-close">סגירה</button>
   </dialog>
-  <script src="TemplateData/CloudProfiles.js?v=1.59"></script>
-  <script src="TemplateData/PilotReport.js?v=1.59"></script>
+  <script src="TemplateData/CloudProfiles.js?v=1.60"></script>
+  <script src="TemplateData/PilotReport.js?v=1.60"></script>
   <script>
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
@@ -480,7 +488,7 @@
     }
 
     const build = 'Build/';
-    const version = "1.59";
+    const version = "1.60";
     const versionKey = 'LearnToRead.WebVersion';
     const updateButton = document.getElementById('web-update');
     let releaseRequest;

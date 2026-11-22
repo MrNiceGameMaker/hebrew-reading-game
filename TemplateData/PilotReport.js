@@ -64,9 +64,10 @@
       if (openReport) {
         if (!dialog.open) dialog.showModal();
         byId('pilot-settings').hidden = true;
-        byId('pilot-verify').hidden = !!admin;
+        byId('pilot-verify').hidden = !!admin || !cloud.pilotEmailAccount();
+        byId('pilot-switch-account').hidden = !!admin;
         if (admin) await showReport();
-        else status.textContent = '';
+        else status.textContent = cloud.pilotEmailAccount() ? '' : 'הדוח נפתח עם כתובת הדוא״ל של מנהל הפיילוט.';
       }
     } catch {
       if (authorization !== generation) return;
@@ -135,6 +136,7 @@
     byId('pilot-report').hidden = false;
     byId('pilot-settings').hidden = true;
     byId('pilot-verify').hidden = true;
+    byId('pilot-switch-account').hidden = true;
     status.textContent = 'טוענים את דוח הפיילוט…';
     const families = new Map();
     const generation = authorization;
@@ -244,6 +246,10 @@
     updateClock();
   };
   byId('pilot-close').onclick = () => dialog.close();
+  byId('pilot-switch-account').onclick = () => {
+    dialog.close();
+    cloud.open();
+  };
   byId('pilot-admin').onclick = byId('pilot-refresh').onclick = showReport;
   async function verifyEmail(send) {
     try {
