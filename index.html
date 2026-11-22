@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#442744">
   <meta name="firebase-project-id" content="learntoread-901d0">
+  <meta name="referrer" content="no-referrer">
   <meta name="firebase-web-api-key" content="AIzaSyAsuLE02IDNxjNK048X-5O1xqX2c2-ydl8">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="טולי טאון">
-  <link rel="manifest" href="manifest.webmanifest?v=1.60">
+  <link rel="manifest" href="manifest.webmanifest?v=1.61">
   <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/tuli-friends-180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/tuli-friends-32.png">
   <title>טולי טאון · Tuli Town</title>
@@ -150,7 +151,7 @@
     }
     #player-name-dialog::backdrop, #cloud-dialog::backdrop, #install-intro::backdrop, #pilot-dialog::backdrop { background: #44274482; }
     #player-name-form { display: grid; gap: 14px; }
-    #player-name-input, #cloud-auth input:not([type=checkbox]), #pilot-dialog input:not([type=checkbox]) {
+    #player-name-input, #cloud-dialog input:not([type=checkbox]), #pilot-dialog input:not([type=checkbox]) {
       box-sizing: border-box;
       width: 100%;
       padding: 11px 13px;
@@ -179,10 +180,10 @@
     button:focus-visible, input:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
     #cloud-dialog { width: min(510px, calc(100% - 32px)); font-weight: 600; }
     #cloud-dialog h2 { margin: 0 0 12px; font-size: 1.5rem; }
-    #cloud-auth:not([hidden]) { display: grid; gap: 9px; }
-    #cloud-auth label { font-size: .95rem; }
+    #cloud-auth:not([hidden]), #cloud-parent-form:not([hidden]) { display: grid; gap: 9px; }
+    #cloud-dialog label { font-size: .95rem; }
     #cloud-import-label { margin: 3px 0; }
-    #cloud-credential-hint { margin: 0; color: #704b46; font-size: .9rem; }
+    #cloud-credential-hint, #cloud-parent-hint, #cloud-parent-status { margin: 0; color: #704b46; font-size: .9rem; }
     #cloud-account-name { overflow-wrap: anywhere; }
     .cloud-actions { display: flex; gap: 8px; margin: 6px 0; }
     #install-intro h2, #pilot-dialog h2 { margin: 0 0 8px; }
@@ -248,7 +249,7 @@
         <img id="loading-town" src="TemplateData/tuli-town-square.webp" width="1440" height="720" fetchpriority="high" decoding="async" alt="">
         <h1 id="loading-title" class="tuli-wordmark" aria-label="טולי טאון">
           <span class="wordmark-text"><span>טולי</span> <span>טאון</span></span>
-          <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.60" width="1200" height="400" decoding="async" alt="">
+          <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.61" width="1200" height="400" decoding="async" alt="">
         </h1>
         <div id="loading-controls">
           <div id="loading-badge">
@@ -278,7 +279,7 @@
   <dialog id="install-intro" aria-labelledby="install-title">
     <h2 id="install-title" class="tuli-wordmark" aria-label="טולי טאון">
       <span class="wordmark-text">טולי טאון</span>
-      <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.60" width="1200" height="400" decoding="async" alt="">
+      <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.61" width="1200" height="400" decoding="async" alt="">
     </h2>
     <p>לחוויה הטובה ביותר בטלפון, מומלץ להתקין את המשחק למסך הבית.</p>
     <p id="install-help" role="status" hidden></p>
@@ -302,17 +303,35 @@
       </div>
       <div class="cloud-actions">
         <button id="cloud-legacy" type="button">יש לי חשבון עם דוא״ל</button>
-        <button id="cloud-recovery" type="submit" value="recover" formnovalidate hidden>איפוס סיסמה בדוא״ל</button>
+        <button id="cloud-recovery" type="submit" value="recover" formnovalidate>שכחנו את הסיסמה</button>
       </div>
     </form>
     <div id="cloud-signed-in" hidden>
       <p id="cloud-account-name"></p>
+      <p id="cloud-parent-status"></p>
+      <div class="cloud-actions">
+        <button id="cloud-parent-add" type="button">דוא״ל הורה לשחזור</button>
+      </div>
       <div class="cloud-actions">
         <button id="cloud-sync-now" type="button">סנכרן עכשיו</button>
         <button id="cloud-sign-out" type="button">יציאה מהחשבון</button>
       </div>
       <button id="open-pilot" type="button">השתתפות בפיילוט</button>
     </div>
+    <form id="cloud-parent-form" hidden>
+      <p id="cloud-parent-hint"></p>
+      <label for="cloud-parent-address">כתובת דוא״ל של ההורה</label>
+      <input id="cloud-parent-address" type="email" autocomplete="email" dir="ltr" maxlength="254" required>
+      <label id="cloud-parent-password-label" for="cloud-parent-password" hidden>סיסמה נוכחית</label>
+      <input id="cloud-parent-password" type="password" autocomplete="current-password" dir="ltr" minlength="8" maxlength="100" hidden>
+      <label id="cloud-parent-new-label" for="cloud-parent-new" hidden>סיסמה חדשה</label>
+      <input id="cloud-parent-new" type="password" autocomplete="new-password" dir="ltr" minlength="8" maxlength="100" hidden>
+      <p id="cloud-parent-message" role="status"></p>
+      <div class="cloud-actions">
+        <button id="cloud-parent-submit" type="submit">שליחת קישור</button>
+        <button id="cloud-parent-back" type="button">חזרה</button>
+      </div>
+    </form>
     <p id="cloud-status" role="status"></p>
     <button id="cloud-close" type="button">חזרה למשחק</button>
   </dialog>
@@ -344,8 +363,9 @@
     <button id="pilot-switch-account" type="button" hidden>מעבר לחשבון המנהל</button>
     <button type="button" id="pilot-close">סגירה</button>
   </dialog>
-  <script src="TemplateData/CloudProfiles.js?v=1.60"></script>
-  <script src="TemplateData/PilotReport.js?v=1.60"></script>
+  <script src="TemplateData/ParentRecovery.js?v=1.61"></script>
+  <script src="TemplateData/CloudProfiles.js?v=1.61"></script>
+  <script src="TemplateData/PilotReport.js?v=1.61"></script>
   <script>
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
@@ -488,7 +508,7 @@
     }
 
     const build = 'Build/';
-    const version = "1.60";
+    const version = "1.61";
     const versionKey = 'LearnToRead.WebVersion';
     const updateButton = document.getElementById('web-update');
     let releaseRequest;
@@ -602,6 +622,10 @@
       }).catch(showError);
     };
     async function startGame() {
+      if (window.learnToReadCloud?.openParentLink()) {
+        statusPanel.hidden = true;
+        return;
+      }
       const candidate = await checkRelease();
       if (candidate && openRelease(candidate)) return;
       if (new URLSearchParams(location.search).has('pilot-report')) {

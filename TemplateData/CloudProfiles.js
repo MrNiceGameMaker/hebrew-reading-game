@@ -6,7 +6,8 @@
   if (!/^[a-z0-9-]+$/.test(project || '') || !apiKey) return;
   const authEndpoint = 'https://identitytoolkit.googleapis.com/v1/accounts:';
   const tokenEndpoint = 'https://securetoken.googleapis.com/v1/token';
-  const firestoreEndpoint = 'https://firestore.googleapis.com/v1/projects/' + project + '/databases/(default)/documents/families/';
+  const firestoreDocuments = 'projects/' + project + '/databases/(default)/documents';
+  const firestoreEndpoint = 'https://firestore.googleapis.com/v1/' + firestoreDocuments;
   const keyQuery = '?key=' + encodeURIComponent(apiKey);
   const reportOnly = new URLSearchParams(location.search).has('pilot-report');
   const sessionKey = 'LearnToRead.Firebase.' + project;
@@ -179,14 +180,15 @@
     });
   }
 
-  async function usernameAddress(username) {
-    // Firebase owns the credentials. Keep the username-to-address mapping deterministic
-    // so no public lookup collection or real email address is needed.
+  async function usernameKey(username) {
+    // A username routes to a synthetic Firebase credential. Real addresses are private.
     const bytes = new TextEncoder().encode('tuli-town-username-v1:' + username);
     const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
-    const id = [...hash.slice(0, 24)].map(byte => byte.toString(16).padStart(2, '0')).join('');
-    return 'tulitown-' + id + '@example.com';
+    return [...hash.slice(0, 24)].map(byte => byte.toString(16).padStart(2, '0')).join('');
   }
+
+  const normalizeUsername = name => name.trim().normalize('NFKC').toLowerCase();
+  const validUsername = name => /^[\p{L}\p{N}][\p{L}\p{N}_.-]{2,23}$/u.test(name);
 
   async function userToken(account) {
     if (!account.token || account.expires < Date.now() + 60000) {
@@ -194,7 +196,7 @@
         method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: account.refresh })
       });
-      if (result.user_id !== account.id) throw new Error('Unexpected Firebase account');
+      if (result.user_id !== (account.authId || account.id)) throw new Error('Unexpected Firebase account');
       account.token = result.id_token;
       account.refresh = result.refresh_token;
       account.expires = Date.now() + Number(result.expires_in) * 1000;
@@ -204,25 +206,27 @@
   }
 
   async function synchronizeAccount(account, local, keepalive = false) {
-    const url = firestoreEndpoint + encodeURIComponent(account.id);
+    const path = '/families/' + encodeURIComponent(account.id);
+    const url = firestoreEndpoint + path;
     const headers = await userToken(account);
     for (let attempt = 0; attempt < 4; attempt++) {
       let remote = empty();
-      let precondition = 'currentDocument.exists=false';
+      let currentDocument = { exists: false };
       try {
         const response = await request(url, { headers, cache: 'no-store' });
         remote = JSON.parse(response.fields.state.stringValue);
         if (remote?.snapshot?.schemaVersion !== 1 || !response.updateTime)
           throw new Error('Unrecognized cloud profile format');
-        precondition = 'currentDocument.updateTime=' + encodeURIComponent(response.updateTime);
+        currentDocument = { updateTime: response.updateTime };
       } catch (error) {
         if (error.status !== 'NOT_FOUND') throw error;
       }
       const merged = merge(remote, local(remote));
       if (same(remote, merged)) return merged;
       try {
-        const body = JSON.stringify({ fields: { state: { stringValue: JSON.stringify(merged) } } });
-        await request(url + '?' + precondition, { method: 'PATCH', headers: { ...headers, 'Content-Type': 'application/json' },
+        const update = { name: firestoreDocuments + path, fields: { state: { stringValue: JSON.stringify(merged) } } };
+        const body = JSON.stringify({ writes: [{ update, currentDocument }] });
+        await request(firestoreEndpoint + ':commit', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
           body, keepalive: keepalive && new TextEncoder().encode(body).length < 60000 });
         return merged;
       } catch (error) {
@@ -259,7 +263,7 @@
     syncTimer = setTimeout(() => sync(), delay);
   }
   function needsLogin(error) {
-    return error.httpStatus === 401 || ['TOKEN_EXPIRED', 'INVALID_REFRESH_TOKEN', 'USER_DISABLED',
+    return error.httpStatus === 401 || ['PERMISSION_DENIED', 'TOKEN_EXPIRED', 'INVALID_REFRESH_TOKEN', 'USER_DISABLED',
       'USER_NOT_FOUND', 'INVALID_GRANT'].includes(error.code);
   }
   function sync(keepalive = false) {
@@ -330,7 +334,9 @@
     identifier.dir = emailMode ? 'ltr' : 'auto';
     document.getElementById('cloud-credential-hint').hidden = emailMode;
     document.getElementById('cloud-register').hidden = emailMode && !reportOnly;
-    document.getElementById('cloud-recovery').hidden = !emailMode;
+    document.getElementById('cloud-recovery').textContent = emailMode ? 'איפוס סיסמה בדוא״ל' : 'שכחנו את הסיסמה';
+    document.getElementById('cloud-recovery').hidden = !emailMode && !parent.available();
+    document.getElementById('cloud-parent-add').hidden = reportOnly || !session?.username || !parent.available();
     legacy.hidden = reportOnly;
     legacy.textContent = emailMode ? 'כניסה בשם משתמש' : 'יש לי חשבון עם דוא״ל';
     updateStatus(status);
@@ -345,14 +351,19 @@
     identifier.focus();
   };
 
+  const parent = window.createParentRecovery({
+    project, apiKey, authenticate, request, dialog, identifier, usernameKey, userToken,
+    renderDialog, updateStatus, getSession: () => session
+  });
+
   form.addEventListener('submit', async event => {
     event.preventDefault();
     if (sending) return;
     const operation = event.submitter?.value || 'login';
     const registering = operation === 'register';
     const label = identifier.value.trim();
-    const username = emailMode ? '' : label.normalize('NFKC').toLowerCase();
-    if (!emailMode && !/^[\p{L}\p{N}][\p{L}\p{N}_.-]{2,23}$/u.test(username)) {
+    const username = emailMode ? '' : normalizeUsername(label);
+    if (!emailMode && !validUsername(username)) {
       updateStatus('בחרו שם משתמש באורך 3–24 תווים, עם אותיות או ספרות. אפשר גם מקף, נקודה וקו תחתון.');
       identifier.focus();
       return;
@@ -366,13 +377,19 @@
       identifier.reportValidity();
       return;
     }
-    if (registering && emailMode && !reportOnly || operation === 'recover' && !emailMode) return;
+    if (registering && emailMode && !reportOnly) return;
+    if (operation === 'recover' && !emailMode) {
+      password.value = '';
+      parent.openRequest(username);
+      return;
+    }
     let created = false;
     sending = true;
     submitButtons.forEach(control => { control.disabled = true; });
     updateStatus(registering ? 'פותחים חשבון…' : 'מתחברים וטוענים שמירות…');
     try {
-      const email = emailMode ? label : await usernameAddress(username);
+      const credential = emailMode ? { email: label } : await parent.loginCredential(username);
+      const email = credential.email;
       if (operation === 'recover') {
         await authenticate('sendOobCode', { requestType: 'PASSWORD_RESET', email });
         updateStatus('אם קיים חשבון בכתובת הזו, יגיע אליו קישור לאיפוס הסיסמה.');
@@ -383,10 +400,11 @@
       });
       created = registering;
       const account = {
-        id: login.localId, token: login.idToken, refresh: login.refreshToken, label, username,
+        id: credential.family || login.localId, authId: login.localId,
+        token: login.idToken, refresh: login.refreshToken, label, username,
         expires: Date.now() + Number(login.expiresIn) * 1000
       };
-      if (!account.id || !account.token || !account.refresh) throw new Error('Incomplete Firebase sign-in');
+      if (!account.authId || !account.token || !account.refresh) throw new Error('Incomplete Firebase sign-in');
       const stored = read(checkpointKey(account.id), empty());
       const merged = reportOnly ? stored : await synchronizeAccount(account, remote => {
         const existing = merge(remote, stored);
@@ -435,6 +453,7 @@
   dialog.addEventListener('cancel', event => { if (sending) event.preventDefault(); });
   dialog.addEventListener('close', () => {
     password.value = '';
+    parent.close();
     document.getElementById('game').focus();
   });
   document.getElementById('cloud-sync-now').onclick = syncNow;
@@ -480,7 +499,7 @@
       if (!account || authRequired) throw new Error('Sign in required');
       const headers = await userToken(account);
       if (session !== account) throw new Error('The parent changed');
-      const url = firestoreEndpoint.slice(0, -'families/'.length) + path;
+      const url = firestoreEndpoint + '/' + path;
       if (!data) {
         try { return await request(url, { headers, cache: 'no-store' }); }
         catch (error) { if (error.httpStatus === 404) return null; throw error; }
@@ -501,7 +520,7 @@
       const email = lookup.users?.[0]?.email;
       if (!email || session !== account) throw new Error('Sign in required');
       const login = await authenticate('signInWithPassword', { email, password, returnSecureToken: true });
-      if (session !== account || login.localId !== account.id) throw new Error('The parent changed');
+      if (session !== account || login.localId !== (account.authId || account.id)) throw new Error('The parent changed');
       account.token = login.idToken;
       account.refresh = login.refreshToken;
       account.expires = Date.now() + Number(login.expiresIn) * 1000;
@@ -554,8 +573,18 @@
     open() {
       renderDialog();
       dialog.showModal();
+      parent.showStatus();
+      if (!reportOnly && !parent.available()) {
+        parent.refreshAvailability().then(available => {
+          if (available && dialog.open && document.getElementById('cloud-parent-form').hidden) {
+            renderDialog();
+            parent.showStatus();
+          }
+        });
+      }
       if (session && !authRequired) sync();
     },
+    openParentLink: () => parent.openLink(),
     attach(refresh) {
       refreshGame = refresh;
       if (refreshPending) refresh();
@@ -567,6 +596,6 @@
   window.addEventListener('storage', event => {
     if (event.key !== sessionKey) return;
     const other = storageValue(decode(event.newValue, null));
-    if ((session?.id ?? '') !== (other?.id ?? '')) location.reload();
+    if ((session?.authId ?? session?.id ?? '') !== (other?.authId ?? other?.id ?? '')) location.reload();
   });
 })();
