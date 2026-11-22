@@ -207,6 +207,7 @@
     #install-title .wordmark-image { width: min(100%, 330px); height: auto; margin-inline: auto; }
     #install-handoff { line-height: 1.5; }
     #install-progress { font-size: 1.3rem; margin-block: 12px; }
+    #install-progress-bar { display: block; width: 100%; height: 16px; margin-block-start: 8px; accent-color: var(--teal); }
     #open-installed-app:not([hidden]) { display: grid; place-items: center; text-align: center; text-decoration: none; }
     #pilot-dialog input[type=text] { font: inherit; width: 13em; max-width: 100%; margin: 8px 0; }
     #pilot-dialog:has(#pilot-report:not([hidden])) { width: min(900px, calc(100% - 24px)); }
@@ -328,7 +329,10 @@
       <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.63" width="1200" height="400" decoding="async" alt="">
     </h2>
     <p id="install-recommendation">לחוויה הטובה ביותר בטלפון ובטאבלט, מומלץ להתקין את המשחק למסך הבית.</p>
-    <p id="install-progress" role="status" hidden>מתקין…</p>
+    <div id="install-progress" hidden>
+      <label for="install-progress-bar">מתקין…</label>
+      <progress id="install-progress-bar"></progress>
+    </div>
     <p id="install-help" role="status" hidden></p>
     <p id="install-handoff" role="status" hidden>כשהאייקון של טולי טאון מופיע במסך הבית, פתחו ממנו את המשחק וסגרו את הלשונית הזו.</p>
     <div class="cloud-actions">
@@ -463,6 +467,7 @@
     const installIntro = document.getElementById('install-intro');
     const installHelp = document.getElementById('install-help');
     const installButton = document.getElementById('install-app');
+    const continueInBrowser = document.getElementById('continue-web');
     const installHandoff = document.getElementById('install-handoff');
     const installRecommendation = document.getElementById('install-recommendation');
     const installProgress = document.getElementById('install-progress');
@@ -474,17 +479,20 @@
     const standalone = matchMedia('(display-mode: standalone)').matches ||
       matchMedia('(display-mode: fullscreen)').matches || navigator.standalone;
     let installAccepted = false;
+    function hideInstallChoices() {
+      installRecommendation.hidden = installButton.hidden = continueInBrowser.hidden = statusPanel.hidden = true;
+    }
     function showInstallProgress() {
-      installRecommendation.hidden = installHelp.hidden = installButton.hidden = installHandoff.hidden = true;
+      hideInstallChoices();
+      installHelp.hidden = installHandoff.hidden = true;
       installProgress.hidden = false;
-      statusPanel.hidden = true;
     }
     function showInstallHandoff(canOpen = false) {
       if (!installIntro.open) return;
-      installRecommendation.hidden = installHelp.hidden = installButton.hidden = installProgress.hidden = true;
+      hideInstallChoices();
+      installHelp.hidden = installProgress.hidden = true;
       openInstalledApp.hidden = !canOpen;
       installHandoff.hidden = false;
-      statusPanel.hidden = true;
       if (canOpen) openInstalledApp.focus();
     }
     async function waitForInstalledApp() {
@@ -512,7 +520,12 @@
         clearTimeout(deadline);
       }
     }
-    document.getElementById('continue-web').onclick = () => installIntro.close();
+    continueInBrowser.onclick = () => {
+      if (!continueInBrowser.hidden) installIntro.close();
+    };
+    installIntro.addEventListener('cancel', event => {
+      if (continueInBrowser.hidden) event.preventDefault();
+    });
     installButton.onclick = async () => {
       if (installPrompt) {
         const prompt = installPrompt;
@@ -523,15 +536,15 @@
           if ((await prompt.userChoice).outcome === 'accepted') waitForInstalledApp();
           else if (!installAccepted) {
             installProgress.hidden = true;
-            installRecommendation.hidden = installButton.hidden = statusPanel.hidden = false;
+            installRecommendation.hidden = installButton.hidden = continueInBrowser.hidden = statusPanel.hidden = false;
           }
           return;
         } catch {
           if (installAccepted) return;
-          installProgress.hidden = true;
-          installRecommendation.hidden = installButton.hidden = false;
         }
       }
+      hideInstallChoices();
+      installProgress.hidden = true;
       installHelp.hidden = false;
       installHelp.textContent = appleMobile
         ? 'ב־Safari פתחו את תפריט השיתוף, בחרו ״הוספה למסך הבית״ והפעילו ״פתיחה כיישום אינטרנט״.'
