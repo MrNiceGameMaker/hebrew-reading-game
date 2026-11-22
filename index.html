@@ -175,7 +175,7 @@
       font: inherit;
     }
     #player-name-actions { display: flex; gap: 10px; }
-    #player-name-actions button, #cloud-dialog button, #install-intro button, #pilot-dialog button, #device-reset-dialog button {
+    #player-name-actions button, #cloud-dialog button, #install-intro button, #open-installed-app, #pilot-dialog button, #device-reset-dialog button {
       min-height: 44px;
       flex: 1;
       border: 1px solid var(--copper);
@@ -186,7 +186,7 @@
       font: inherit;
       cursor: pointer;
     }
-    #player-name-actions button[type=submit], #install-app, #pilot-save, #cloud-login, #cloud-sync-now {
+    #player-name-actions button[type=submit], #install-app, #open-installed-app, #pilot-save, #cloud-login, #cloud-sync-now {
       color: var(--plum);
       background: var(--gold);
     }
@@ -206,6 +206,8 @@
     #install-intro h2, #pilot-dialog h2 { margin: 0 0 8px; }
     #install-title .wordmark-image { width: min(100%, 330px); height: auto; margin-inline: auto; }
     #install-handoff { line-height: 1.5; }
+    #install-progress { font-size: 1.3rem; margin-block: 12px; }
+    #open-installed-app:not([hidden]) { display: grid; place-items: center; text-align: center; text-decoration: none; }
     #pilot-dialog input[type=text] { font: inherit; width: 13em; max-width: 100%; margin: 8px 0; }
     #pilot-dialog:has(#pilot-report:not([hidden])) { width: min(900px, calc(100% - 24px)); }
     #pilot-dialog label { display: block; margin: 12px 0; }
@@ -326,10 +328,12 @@
       <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.63" width="1200" height="400" decoding="async" alt="">
     </h2>
     <p id="install-recommendation">לחוויה הטובה ביותר בטלפון ובטאבלט, מומלץ להתקין את המשחק למסך הבית.</p>
+    <p id="install-progress" role="status" hidden>מתקין…</p>
     <p id="install-help" role="status" hidden></p>
     <p id="install-handoff" role="status" hidden>כשהאייקון של טולי טאון מופיע במסך הבית, פתחו ממנו את המשחק וסגרו את הלשונית הזו.</p>
     <div class="cloud-actions">
       <button type="button" id="install-app">התקנה</button>
+      <a id="open-installed-app" href="./?launch=home&amp;open-app=1" target="_blank" rel="noopener noreferrer" hidden>פתח את טולי טאון</a>
       <button type="button" id="continue-web">המשך באתר</button>
     </div>
   </dialog>
@@ -460,28 +464,73 @@
     const installHelp = document.getElementById('install-help');
     const installButton = document.getElementById('install-app');
     const installHandoff = document.getElementById('install-handoff');
+    const installRecommendation = document.getElementById('install-recommendation');
+    const installProgress = document.getElementById('install-progress');
+    const openInstalledApp = document.getElementById('open-installed-app');
     const appleMobile = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
       navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-    const mobileBrowser = appleMobile || /Android/.test(navigator.userAgent);
+    const android = !appleMobile && /Android/.test(navigator.userAgent);
+    const mobileBrowser = appleMobile || android;
     const standalone = matchMedia('(display-mode: standalone)').matches ||
       matchMedia('(display-mode: fullscreen)').matches || navigator.standalone;
-    function showInstallHandoff() {
+    let installAccepted = false;
+    function showInstallProgress() {
+      installRecommendation.hidden = installHelp.hidden = installButton.hidden = installHandoff.hidden = true;
+      installProgress.hidden = false;
+      statusPanel.hidden = true;
+    }
+    function showInstallHandoff(canOpen = false) {
       if (!installIntro.open) return;
-      document.getElementById('install-recommendation').hidden = true;
-      installHelp.hidden = installButton.hidden = true;
+      installRecommendation.hidden = installHelp.hidden = installButton.hidden = installProgress.hidden = true;
+      openInstalledApp.hidden = !canOpen;
       installHandoff.hidden = false;
       statusPanel.hidden = true;
+      if (canOpen) openInstalledApp.focus();
+    }
+    async function waitForInstalledApp() {
+      // Android can announce acceptance before the installed app is available to open.
+      if (!installIntro.open || installAccepted) return;
+      installAccepted = true;
+      if (!android || typeof navigator.getInstalledRelatedApps !== 'function') {
+        showInstallHandoff();
+        return;
+      }
+      showInstallProgress();
+      const deadline = setTimeout(() => showInstallHandoff(), 20000);
+      try {
+        while (installIntro.open && !installProgress.hidden) {
+          const relatedApps = await navigator.getInstalledRelatedApps();
+          if (relatedApps.some(app => app.platform === 'webapp')) {
+            showInstallHandoff(true);
+            return;
+          }
+          await new Promise(resolve => setTimeout(resolve, 750));
+        }
+      } catch {
+        showInstallHandoff();
+      } finally {
+        clearTimeout(deadline);
+      }
     }
     document.getElementById('continue-web').onclick = () => installIntro.close();
     installButton.onclick = async () => {
       if (installPrompt) {
         const prompt = installPrompt;
         installPrompt = null;
+        showInstallProgress();
         try {
           await prompt.prompt();
-          if ((await prompt.userChoice).outcome === 'accepted') showInstallHandoff();
+          if ((await prompt.userChoice).outcome === 'accepted') waitForInstalledApp();
+          else if (!installAccepted) {
+            installProgress.hidden = true;
+            installRecommendation.hidden = installButton.hidden = statusPanel.hidden = false;
+          }
           return;
-        } catch { /* The browser may have dismissed its install prompt. */ }
+        } catch {
+          if (installAccepted) return;
+          installProgress.hidden = true;
+          installRecommendation.hidden = installButton.hidden = false;
+        }
       }
       installHelp.hidden = false;
       installHelp.textContent = appleMobile
@@ -491,7 +540,7 @@
     };
     window.addEventListener('appinstalled', () => {
       installPrompt = null;
-      showInstallHandoff();
+      waitForInstalledApp();
     });
     let rotated = false;
     let loadingAvatar = '1f407';
@@ -785,6 +834,7 @@
       }
       if (mobileBrowser && !standalone) {
         installIntro.showModal();
+        if (launchParams.has('open-app')) showInstallHandoff();
         await new Promise(resolve => installIntro.addEventListener('close', resolve, { once: true }));
         statusPanel.hidden = false;
       }
