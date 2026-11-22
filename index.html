@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="טולי טאון">
-  <link rel="manifest" href="manifest.webmanifest?v=1.62">
+  <link rel="manifest" href="manifest.webmanifest?v=1.63">
   <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/tuli-friends-180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/tuli-friends-32.png">
   <title>טולי טאון · Tuli Town</title>
@@ -205,6 +205,29 @@
     #device-reset-dialog h2 { margin: 0 0 8px; }
     #device-reset-dialog p { font-size: 1rem; font-weight: 600; }
     #device-reset-confirm { background: #843c5c !important; color: white !important; }
+    #device-reset-form label { display: block; margin-block-end: 6px; font-size: 1rem; }
+    .reset-exercise { display: flex; width: fit-content; align-items: center; gap: 12px; direction: ltr; }
+    #device-reset-question { font-variant-numeric: tabular-nums; }
+    #device-reset-answer {
+      box-sizing: border-box;
+      min-height: 44px;
+      width: 5.25rem;
+      padding: 5px;
+      border: 1px solid var(--copper);
+      border-radius: 8px;
+      background: #fffbf2;
+      color: var(--plum);
+      text-align: center;
+      font: inherit;
+    }
+    .screen-reader-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
     #retry {
       justify-self: center;
       min-height: 48px;
@@ -257,7 +280,7 @@
         <img id="loading-town" src="TemplateData/tuli-town-square.webp" width="1440" height="720" fetchpriority="high" decoding="async" alt="">
         <h1 id="loading-title" class="tuli-wordmark" aria-label="טולי טאון">
           <span class="wordmark-text"><span>טולי</span> <span>טאון</span></span>
-          <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.62" width="1200" height="400" decoding="async" alt="">
+          <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.63" width="1200" height="400" decoding="async" alt="">
         </h1>
         <div id="loading-controls">
           <div id="loading-badge">
@@ -287,7 +310,7 @@
   <dialog id="install-intro" aria-labelledby="install-title">
     <h2 id="install-title" class="tuli-wordmark" aria-label="טולי טאון">
       <span class="wordmark-text">טולי טאון</span>
-      <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.62" width="1200" height="400" decoding="async" alt="">
+      <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.63" width="1200" height="400" decoding="async" alt="">
     </h2>
     <p>לחוויה הטובה ביותר בטלפון, מומלץ להתקין את המשחק למסך הבית.</p>
     <p id="install-help" role="status" hidden></p>
@@ -350,12 +373,21 @@
     <h2 id="device-reset-title">להתחיל מחדש במכשיר הזה?</h2>
     <p>השמירות המקומיות והכניסה לחשבון יימחקו מהמכשיר. משחקים שכבר סונכרנו לענן יהיו זמינים כשתתחברו שוב.</p>
     <p>לפני האיפוס, סגרו עותקים אחרים של טולי טאון שפתוחים במכשיר.</p>
-    <div class="cloud-actions">
-      <button id="device-reset-cancel" type="button" autofocus>ביטול</button>
-      <button id="device-reset-confirm" type="button">מחיקה והתחלה מחדש</button>
-    </div>
-    <p id="device-reset-status" role="status"></p>
+    <form id="device-reset-form">
+      <label for="device-reset-answer">להורים · פתרו את התרגיל</label>
+      <div class="reset-exercise">
+        <span id="device-reset-question"></span>
+        <input id="device-reset-answer" type="text" inputmode="numeric" autocomplete="off"
+          aria-describedby="device-reset-question" maxlength="3" pattern="[0-9]{1,3}" required>
+      </div>
+      <p id="device-reset-status" role="status"></p>
+      <div class="cloud-actions">
+        <button id="device-reset-cancel" type="button" autofocus>ביטול</button>
+        <button id="device-reset-confirm" type="submit">מחיקה והתחלה מחדש</button>
+      </div>
+    </form>
   </dialog>
+  <div id="parent-exercise-announcement" class="screen-reader-only" role="status" aria-live="polite"></div>
   <dialog id="pilot-dialog" aria-labelledby="pilot-title">
     <h2 id="pilot-title">פיילוט טולי טאון</h2>
     <section id="pilot-settings">
@@ -384,9 +416,9 @@
     <button id="pilot-switch-account" type="button" hidden>מעבר לחשבון המנהל</button>
     <button type="button" id="pilot-close">סגירה</button>
   </dialog>
-  <script src="TemplateData/ParentRecovery.js?v=1.62"></script>
-  <script src="TemplateData/CloudProfiles.js?v=1.62"></script>
-  <script src="TemplateData/PilotReport.js?v=1.62"></script>
+  <script src="TemplateData/ParentRecovery.js?v=1.63"></script>
+  <script src="TemplateData/CloudProfiles.js?v=1.63"></script>
+  <script src="TemplateData/PilotReport.js?v=1.63"></script>
   <script>
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
@@ -529,7 +561,7 @@
     }
 
     const build = 'Build/';
-    const version = "1.62";
+    const version = "1.63";
     const versionKey = 'LearnToRead.WebVersion';
     const deviceResetKey = 'LearnToRead.DeviceReset';
     const launchParams = new URLSearchParams(location.search);
@@ -657,9 +689,22 @@
     };
     function openDeviceReset() {
       const dialog = document.getElementById('device-reset-dialog');
+      const form = document.getElementById('device-reset-form');
+      const question = document.getElementById('device-reset-question');
+      const answer = document.getElementById('device-reset-answer');
       const cancel = document.getElementById('device-reset-cancel');
       const confirm = document.getElementById('device-reset-confirm');
       const feedback = document.getElementById('device-reset-status');
+      let expectedAnswer;
+      function newQuestion() {
+        const operand = () => (2 + Math.floor(Math.random() * 5)) * 10 + 6 + Math.floor(Math.random() * 4);
+        const left = operand();
+        const right = operand();
+        expectedAnswer = left + right;
+        question.textContent = left + ' + ' + right + ' =';
+        answer.value = '';
+      }
+      newQuestion();
       const gameUrl = new URL(location.href);
       gameUrl.searchParams.delete('reset-device');
       const openGame = () => location.replace(gameUrl.href);
@@ -668,8 +713,17 @@
         event.preventDefault();
         if (!cancel.disabled) openGame();
       });
-      confirm.onclick = async () => {
+      form.onsubmit = async event => {
+        event.preventDefault();
+        if (confirm.disabled) return;
+        if (!/^[0-9]{1,3}$/.test(answer.value) || Number(answer.value) !== expectedAnswer) {
+          newQuestion();
+          feedback.textContent = 'התשובה לא מתאימה. נסו תרגיל חדש.';
+          answer.focus();
+          return;
+        }
         cancel.disabled = confirm.disabled = true;
+        answer.readOnly = true;
         feedback.textContent = 'מאפסים את השמירה…';
         try {
           // Confirm that the one-shot signal can be retained before deleting anything.
@@ -680,6 +734,7 @@
         } catch {
           feedback.textContent = 'האיפוס לא הושלם. סגרו חלונות אחרים של המשחק ונסו שוב.';
           cancel.disabled = confirm.disabled = false;
+          answer.readOnly = false;
         }
       };
       statusPanel.hidden = true;
