@@ -179,8 +179,16 @@
     }
     body > dialog::backdrop { background: #44274482; }
     #player-name-dialog { --dialog-width: 560px; padding: 12px; }
+    :root.sideways-game #player-name-dialog { --dialog-width: 710px; padding: 10px; }
     #player-name-form { display: flex; flex-wrap: wrap; gap: 8px 12px; }
     #player-name-label { flex: 0 0 100%; }
+    :root.sideways-game #player-name-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(140px, .65fr);
+      gap: 4px 8px;
+      align-items: center;
+    }
+    :root.sideways-game #player-name-label { grid-column: 1 / -1; font-size: .95rem; }
     #player-name-input, #cloud-dialog input:not([type=checkbox]), #pilot-dialog input:not([type=checkbox]) {
       box-sizing: border-box;
       width: 100%;
@@ -191,9 +199,13 @@
       background: #fffbf2;
       font: inherit;
     }
-    #player-name-input { flex: 2 1 170px; width: auto; min-height: 44px; }
+    #player-name-input { flex: 2 1 170px; width: auto; min-width: 0; min-height: 44px; }
     #player-name-actions { flex: 1 1 168px; display: flex; gap: 8px; }
-    #player-name-actions button, #cloud-dialog button, #install-intro button, #open-installed-app, #pilot-dialog button, #device-reset-dialog button {
+    #name-keyboard { grid-column: 1 / -1; min-width: 0; }
+    #name-keys { display: grid; gap: 4px; padding-block: 4px; }
+    .name-key-row { display: grid; grid-template-columns: repeat(var(--key-columns), minmax(0, 1fr)); gap: 4px; }
+    .name-key-controls { display: flex; flex-wrap: wrap; gap: 4px; }
+    #player-name-form button, #cloud-dialog button, #install-intro button, #open-installed-app, #pilot-dialog button, #device-reset-dialog button {
       min-height: 44px;
       flex: 1;
       border: 1px solid var(--copper);
@@ -204,6 +216,11 @@
       font: inherit;
       cursor: pointer;
     }
+    #name-keyboard button { padding: 0 4px; }
+    .name-key-row button { background: #fffaf2; font-size: 1.25rem; }
+    .name-key-controls button { white-space: nowrap; font-size: .92rem; }
+    .name-key-controls button[aria-pressed="true"] { background: #c4e9d9; border-color: var(--teal); }
+    #name-keyboard #name-space { flex: 3 1 auto; }
     #player-name-actions button[type=submit], #install-app, #open-installed-app, #pilot-save, #cloud-login, #cloud-sync-now {
       color: var(--plum);
       background: var(--gold);
@@ -341,7 +358,7 @@
         <img id="loading-town" src="TemplateData/tuli-town-square.webp" width="1440" height="720" fetchpriority="high" decoding="async" alt="">
         <h1 id="loading-title" class="tuli-wordmark" aria-label="טולי טאון">
           <span class="wordmark-text"><span>טולי</span> <span>טאון</span></span>
-          <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.66" width="1200" height="400" decoding="async" alt="">
+          <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.67" width="1200" height="400" decoding="async" alt="">
         </h1>
         <div id="loading-controls">
           <div id="loading-badge">
@@ -361,17 +378,28 @@
   <dialog id="player-name-dialog" aria-labelledby="player-name-label">
     <form id="player-name-form">
       <label id="player-name-label" for="player-name-input">שם הילד או הילדה</label>
-      <input id="player-name-input" type="text" dir="auto" maxlength="24" autocomplete="off" autofocus>
+      <input id="player-name-input" type="text" inputmode="text" dir="auto" maxlength="24" autocomplete="off" autofocus>
       <div id="player-name-actions">
         <button type="submit">אישור</button>
         <button type="button" id="cancel-player-name">ביטול</button>
+      </div>
+      <div id="name-keyboard" role="group" aria-label="מקלדת שם" hidden>
+        <div id="name-keys"></div>
+        <div class="name-key-controls">
+          <button type="button" data-name-layout="he" aria-pressed="true">עברית</button>
+          <button type="button" data-name-layout="en" aria-pressed="false">ABC</button>
+          <button type="button" data-name-layout="symbols" aria-pressed="false">123</button>
+          <button type="button" id="name-shift" aria-label="אותיות גדולות" aria-pressed="false" hidden>↑</button>
+          <button type="button" id="name-space">רווח</button>
+          <button type="button" id="name-delete">מחיקה</button>
+        </div>
       </div>
     </form>
   </dialog>
   <dialog id="install-intro" aria-labelledby="install-title">
     <h2 id="install-title" class="tuli-wordmark" aria-label="טולי טאון">
       <span class="wordmark-text">טולי טאון</span>
-      <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.66" width="1200" height="400" decoding="async" alt="">
+      <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.67" width="1200" height="400" decoding="async" alt="">
     </h2>
     <div id="install-copy">
       <p id="install-recommendation">לחוויה הטובה ביותר בטלפון ובטאבלט, מומלץ להתקין את המשחק למסך הבית.</p>
@@ -485,9 +513,9 @@
     <button id="pilot-switch-account" type="button" hidden>מעבר לחשבון המנהל</button>
     <button type="button" id="pilot-close">סגירה</button>
   </dialog>
-  <script src="TemplateData/ParentRecovery.js?v=1.66"></script>
-  <script src="TemplateData/CloudProfiles.js?v=1.66"></script>
-  <script src="TemplateData/PilotReport.js?v=1.66"></script>
+  <script src="TemplateData/ParentRecovery.js?v=1.67"></script>
+  <script src="TemplateData/CloudProfiles.js?v=1.67"></script>
+  <script src="TemplateData/PilotReport.js?v=1.67"></script>
   <script>
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
@@ -614,6 +642,80 @@
 
     const nameDialog = document.getElementById('player-name-dialog');
     const nameInput = document.getElementById('player-name-input');
+    const nameKeyboard = document.getElementById('name-keyboard');
+    const nameKeys = document.getElementById('name-keys');
+    const nameLayouts = {
+      he: ['אבגדהוזחט', 'יכלמנסעפצ', 'קרשתךםןףץ'],
+      en: ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'],
+      symbols: ['1234567890', "-'׳.־’"]
+    };
+    const nameLayoutButtons = nameKeyboard.querySelectorAll('[data-name-layout]');
+    const nameShift = document.getElementById('name-shift');
+    let nameLayout = 'he';
+    let nameUppercase = false;
+
+    function replaceNameSelection(text, backspace = false) {
+      const value = nameInput.value;
+      let start = nameInput.selectionStart;
+      const end = nameInput.selectionEnd;
+      if (backspace && start === end && start > 0) {
+        const preceding = Array.from(value.slice(0, start)).at(-1);
+        start -= preceding.length;
+      }
+      if (value.length - (end - start) + text.length <= nameInput.maxLength)
+        nameInput.setRangeText(text, start, end, 'end');
+    }
+
+    function renderNameKeys() {
+      nameKeys.dir = nameLayout === 'he' ? 'rtl' : 'ltr';
+      nameKeys.replaceChildren();
+      for (const keys of nameLayouts[nameLayout]) {
+        const row = document.createElement('div');
+        row.className = 'name-key-row';
+        row.style.setProperty('--key-columns', nameLayout === 'he' ? 9 : 10);
+        for (const character of keys) {
+          const key = nameLayout === 'en' && nameUppercase ? character.toUpperCase() : character;
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = key;
+          button.dataset.nameKey = key;
+          button.onclick = () => replaceNameSelection(key);
+          row.append(button);
+        }
+        nameKeys.append(row);
+      }
+      for (const button of nameLayoutButtons)
+        button.setAttribute('aria-pressed', String(button.dataset.nameLayout === nameLayout));
+      nameShift.hidden = nameLayout !== 'en';
+      nameShift.setAttribute('aria-pressed', String(nameUppercase));
+    }
+
+    for (const button of nameLayoutButtons) button.onclick = () => {
+      nameLayout = button.dataset.nameLayout;
+      renderNameKeys();
+    };
+    nameShift.onclick = () => {
+      nameUppercase = !nameUppercase;
+      renderNameKeys();
+    };
+    document.getElementById('name-space').onclick = () => replaceNameSelection(' ');
+    document.getElementById('name-delete').onclick = () => replaceNameSelection('', true);
+
+    function fitNameKeyboard() {
+      if (nameKeyboard.hidden === !rotated) return;
+      const focused = document.activeElement;
+      if (rotated && focused === nameInput) nameInput.blur();
+      nameInput.inputMode = rotated ? 'none' : 'text';
+      nameKeyboard.hidden = !rotated;
+      if (rotated) {
+        renderNameKeys();
+        if (nameDialog.open && focused === nameInput)
+          document.getElementById('cancel-player-name').focus({ preventScroll: true });
+      } else if (nameDialog.open && nameKeyboard.contains(focused)) {
+        nameInput.focus({ preventScroll: true });
+      }
+    }
+
     let nameTarget;
     let unityInstance;
     let cloudTarget;
@@ -624,8 +726,9 @@
     window.learnToReadEditPlayerName = (target, value) => {
       nameTarget = target;
       nameInput.value = value;
+      nameInput.setSelectionRange(value.length, value.length);
       nameDialog.showModal();
-      nameInput.focus();
+      nameInput.focus({ preventScroll: true });
     };
     document.getElementById('player-name-form').addEventListener('submit', event => {
       event.preventDefault();
@@ -653,6 +756,7 @@
         stage.style.setProperty('--stage-height', width + 'px');
       }
       fitDialogs();
+      fitNameKeyboard();
     }
     function fitDialogs() {
       const visual = window.visualViewport;
@@ -709,7 +813,7 @@
     }
 
     const build = 'Build/';
-    const version = "1.66";
+    const version = "1.67";
     const versionKey = 'LearnToRead.WebVersion';
     const deviceResetKey = 'LearnToRead.DeviceReset';
     const launchParams = new URLSearchParams(location.search);
