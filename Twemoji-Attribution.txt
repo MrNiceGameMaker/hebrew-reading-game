@@ -3,5 +3,5 @@ Source: https://github.com/jdecked/twemoji
 License: Creative Commons Attribution 4.0 International
 https://creativecommons.org/licenses/by/4.0/
 
-The PNG artwork is used without visual changes. The game displays it at tile size.
+The game displays the original PNG artwork at tile size. Some English coloring pages and connect-the-dots activities use outlines derived from these icons.
 The full license is included in LICENSE.txt.

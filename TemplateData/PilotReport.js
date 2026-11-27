@@ -1,16 +1,17 @@
 (() => {
   'use strict';
+  const t = window.learnToReadLanguage?.t ?? (value => value);
   const cloud = window.learnToReadCloud;
   const byId = id => document.getElementById(id);
   const dialog = byId('pilot-dialog');
   const form = byId('pilot-consent');
   const status = byId('pilot-status');
   const reportOnly = new URLSearchParams(location.search).has('pilot-report');
-  const stages = { profiles: 'בחירת פרופיל', onboarding: 'יצירת פרופיל', home: 'בבית', menu: 'בתפריט',
-    loading: 'טעינת משחקון', round: 'באמצע משחקון', roundComplete: 'סיום משחקון' };
-  const games = { Catch: 'תפיסת אותיות', Mole: 'חפרפרות', Laser: 'לייזר', Drawing: 'חיבור נקודות',
-    Rhythm: 'תזמורת האותיות', Match: 'מילה ותמונה', Pairs: 'זוגות', Garage: 'מוסך המילים',
-    Choir: 'מקהלת ההברות', PuzzleRoom: 'חדר חידות' };
+  const stages = { profiles: t('בחירת פרופיל'), onboarding: t('יצירת פרופיל'), home: t('בבית'), menu: t('בתפריט'),
+    loading: t('טעינת משחקון'), round: t('באמצע משחקון'), roundComplete: t('סיום משחקון') };
+  const games = { Catch: t('תפיסת אותיות'), Mole: t('חפרפרות'), Laser: t('לייזר'), Drawing: t('חיבור נקודות'),
+    Rhythm: t('תזמורת האותיות'), Match: t('מילה ותמונה'), Pairs: t('זוגות'), Garage: t('מוסך המילים'),
+    Choir: t('מקהלת ההברות'), PuzzleRoom: t('חדר חידות') };
   const idleLimit = 60000;
   const visitGap = 30 * 60000;
   let owner, consent, admin, visit, visitId, stage = 'profiles', game = '';
@@ -67,11 +68,11 @@
         byId('pilot-verify').hidden = !!admin || !cloud.pilotEmailAccount();
         byId('pilot-switch-account').hidden = !!admin;
         if (admin) await showReport();
-        else status.textContent = cloud.pilotEmailAccount() ? '' : 'הדוח נפתח עם כתובת הדוא״ל של מנהל הפיילוט.';
+        else status.textContent = cloud.pilotEmailAccount() ? '' : t('הדוח נפתח עם כתובת הדוא״ל של מנהל הפיילוט.');
       }
     } catch {
       if (authorization !== generation) return;
-      status.textContent = 'הפיילוט עדיין לא זמין, או שאין לחשבון גישה.';
+      status.textContent = t('הפיילוט עדיין לא זמין, או שאין לחשבון גישה.');
       renderConsent();
     }
   }
@@ -137,7 +138,7 @@
     byId('pilot-settings').hidden = true;
     byId('pilot-verify').hidden = true;
     byId('pilot-switch-account').hidden = true;
-    status.textContent = 'טוענים את דוח הפיילוט…';
+    status.textContent = t('טוענים את דוח הפיילוט…');
     const families = new Map();
     const generation = authorization;
     const cutoff = Date.now() - 30 * 86400000;
@@ -171,21 +172,21 @@
           line.appendChild(cell);
         }
       }
-      row(table.createTHead(), ['קוד משפחה', 'ביקורים', 'ביקור ראשון', 'פעילות אחרונה', 'זמן פעיל',
-        'משחקונים שהושלמו', 'שלב אחרון'], 'th');
+      row(table.createTHead(), [t('קוד משפחה'), t('ביקורים'), t('ביקור ראשון'), t('פעילות אחרונה'), t('זמן פעיל'),
+        t('משחקונים שהושלמו'), t('שלב אחרון')], 'th');
       const list = table.createTBody();
-      const dates = new Intl.DateTimeFormat('he-IL', { dateStyle: 'short', timeStyle: 'short' });
+      const dates = new Intl.DateTimeFormat(window.learnToReadLanguage?.english ? 'en-US' : 'he-IL', { dateStyle: 'short', timeStyle: 'short' });
       for (const family of families.values()) {
         row(list, [family.code, family.visits, dates.format(family.first), dates.format(family.updatedAt),
-          Math.round(family.seconds / 6) / 10 + ' דק׳', family.completed,
+          Math.round(family.seconds / 6) / 10 + t(' דק׳'), family.completed,
           [stages[family.stage], games[family.game]].filter(Boolean).join(' · ')], 'td');
       }
       byId('pilot-table').replaceChildren(table);
       status.textContent = families.size
-        ? families.size + ' משפחות ב־30 הימים האחרונים · השלב האחרון משוער לפי השמירה האחרונה'
-        : 'עדיין אין נתוני משחק ממשפחות שהצטרפו.';
+        ? families.size + t(' משפחות ב־30 הימים האחרונים · השלב האחרון משוער לפי השמירה האחרונה')
+        : t('עדיין אין נתוני משחק ממשפחות שהצטרפו.');
     } catch {
-      status.textContent = 'טעינת הדוח נכשלה. בדקו את החיבור וההרשאה ונסו שוב.';
+      status.textContent = t('טעינת הדוח נכשלה. בדקו את החיבור וההרשאה ונסו שוב.');
     }
   }
 
@@ -209,11 +210,11 @@
       await cloud.pilotDocument('pilotConsents/' + encodeURIComponent(owner), next);
       if (generation !== authorization) return;
       consent = next;
-      status.textContent = 'השיתוף הופעל. אפשר למסור למנהל הפיילוט את קוד המשפחה.';
+      status.textContent = t('השיתוף הופעל. אפשר למסור למנהל הפיילוט את קוד המשפחה.');
       renderConsent();
       if (!reportOnly) startVisit();
     } catch {
-      status.textContent = 'ההצטרפות נכשלה. בדקו את סיסמת ההורה ואת החיבור.';
+      status.textContent = t('ההצטרפות נכשלה. בדקו את סיסמת ההורה ואת החיבור.');
     } finally { form.reset(); setBusy(false); }
   });
 
@@ -226,11 +227,11 @@
     setBusy(true);
     try {
       await cloud.pilotDocument('pilotConsents/' + encodeURIComponent(owner), next);
-      if (generation === authorization) status.textContent = 'השיתוף הופסק.';
+      if (generation === authorization) status.textContent = t('השיתוף הופסק.');
     } catch {
       if (generation === authorization) {
         consent = { ...next, enabled: true };
-        status.textContent = 'השיתוף נעצר כאן. כדי להפסיק גם במכשירים אחרים, נסו שוב בחיבור לאינטרנט.';
+        status.textContent = t('השיתוף נעצר כאן. כדי להפסיק גם במכשירים אחרים, נסו שוב בחיבור לאינטרנט.');
       }
     } finally { renderConsent(); setBusy(false); }
   };
@@ -240,7 +241,7 @@
     byId('pilot-report').hidden = true;
     byId('pilot-settings').hidden = false;
     byId('pilot-verify').hidden = true;
-    status.textContent = consent ? '' : 'ממתינים לזמינות שירות הפיילוט.';
+    status.textContent = consent ? '' : t('ממתינים לזמינות שירות הפיילוט.');
     renderConsent();
     dialog.showModal();
     updateClock();
@@ -254,10 +255,10 @@
   async function verifyEmail(send) {
     try {
       await cloud.verifyPilotEmail(send);
-      if (send) status.textContent = 'נשלח קישור לכתובת הדוא״ל של החשבון. לאחר האימות לחצו על ״בדיקת אימות מחדש״.';
+      if (send) status.textContent = t('נשלח קישור לכתובת הדוא״ל של החשבון. לאחר האימות לחצו על ״בדיקת אימות מחדש״.');
       else await readAccount(true);
     } catch {
-      status.textContent = 'לא הצלחנו להשלים את האימות. נסו שוב בעוד רגע.';
+      status.textContent = t('לא הצלחנו להשלים את האימות. נסו שוב בעוד רגע.');
     }
   }
   byId('pilot-send-verification').onclick = () => verifyEmail(true);

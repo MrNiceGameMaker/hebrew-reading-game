@@ -80,6 +80,9 @@
     .wordmark-image { display: none; }
     .tuli-wordmark.has-illustration .wordmark-image { display: block; }
     .tuli-wordmark.has-illustration .wordmark-text { display: none; }
+    html[lang="en"] .tuli-wordmark .wordmark-image { display: none; }
+    html[lang="en"] .tuli-wordmark .wordmark-text { display: block; }
+    #install-language { margin: .6rem auto 0; }
     #loading-title .wordmark-image {
       width: min(86cqw, 96cqh, 930px);
       height: auto;
@@ -358,7 +361,7 @@
         <img id="loading-town" src="TemplateData/tuli-town-square.webp" width="1440" height="720" fetchpriority="high" decoding="async" alt="">
         <h1 id="loading-title" class="tuli-wordmark" aria-label="טולי טאון">
           <span class="wordmark-text"><span>טולי</span> <span>טאון</span></span>
-          <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.86" width="1200" height="400" decoding="async" alt="">
+          <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.87" width="1200" height="400" decoding="async" alt="">
         </h1>
         <div id="loading-controls">
           <div id="loading-badge">
@@ -399,7 +402,7 @@
   <dialog id="install-intro" aria-labelledby="install-title">
     <h2 id="install-title" class="tuli-wordmark" aria-label="טולי טאון">
       <span class="wordmark-text">טולי טאון</span>
-      <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.86" width="1200" height="400" decoding="async" alt="">
+      <img class="wordmark-image" src="TemplateData/tuli-fantasy-wordmark.webp?v=1.87" width="1200" height="400" decoding="async" alt="">
     </h2>
     <div id="install-copy">
       <p id="install-recommendation">לחוויה הטובה ביותר בטלפון ובטאבלט, מומלץ להתקין את המשחק למסך הבית.</p>
@@ -414,6 +417,7 @@
         <a id="open-installed-app" href="./?launch=home&amp;open-app=1" target="_blank" rel="noopener noreferrer" hidden>פתח את טולי טאון</a>
         <button type="button" id="continue-web">המשך באתר</button>
       </div>
+      <button type="button" id="install-language" data-language-switch>English</button>
     </div>
   </dialog>
   <dialog id="cloud-dialog" aria-labelledby="cloud-title">
@@ -513,10 +517,13 @@
     <button id="pilot-switch-account" type="button" hidden>מעבר לחשבון המנהל</button>
     <button type="button" id="pilot-close">סגירה</button>
   </dialog>
-  <script src="TemplateData/ParentRecovery.js?v=1.86"></script>
-  <script src="TemplateData/CloudProfiles.js?v=1.86"></script>
-  <script src="TemplateData/PilotReport.js?v=1.86"></script>
+  <script src="TemplateData/GameLanguage.js?v=1.87"></script>
+  <script>window.learnToReadLanguage.localize();</script>
+  <script src="TemplateData/ParentRecovery.js?v=1.87"></script>
+  <script src="TemplateData/CloudProfiles.js?v=1.87"></script>
+  <script src="TemplateData/PilotReport.js?v=1.87"></script>
   <script>
+    const t = window.learnToReadLanguage.t;
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('game');
     const statusPanel = document.getElementById('status');
@@ -526,7 +533,8 @@
     const fullscreen = document.getElementById('fullscreen');
     for (const illustration of document.querySelectorAll('.wordmark-image')) {
       const showIllustration = () => {
-        if (illustration.naturalWidth) illustration.parentElement.classList.add('has-illustration');
+        if (!window.learnToReadLanguage.english && illustration.naturalWidth)
+          illustration.parentElement.classList.add('has-illustration');
       };
       if (illustration.complete) showIllustration();
       else illustration.addEventListener('load', showIllustration, { once: true });
@@ -622,8 +630,8 @@
       installProgress.hidden = true;
       installHelp.hidden = false;
       installHelp.textContent = appleMobile
-        ? 'ב־Safari פתחו את תפריט השיתוף, בחרו ״הוספה למסך הבית״ והפעילו ״פתיחה כיישום אינטרנט״.'
-        : 'בתפריט הדפדפן ⋮ בחרו ״התקנת אפליקציה״ או ״הוספה למסך הבית״.';
+        ? t('ב־Safari פתחו את תפריט השיתוף, בחרו ״הוספה למסך הבית״ והפעילו ״פתיחה כיישום אינטרנט״.')
+        : t('בתפריט הדפדפן ⋮ בחרו ״התקנת אפליקציה״ או ״הוספה למסך הבית״.');
       installHandoff.hidden = false;
     };
     window.addEventListener('appinstalled', () => {
@@ -651,7 +659,7 @@
     };
     const nameLayoutButtons = nameKeyboard.querySelectorAll('[data-name-layout]');
     const nameShift = document.getElementById('name-shift');
-    let nameLayout = 'he';
+    let nameLayout = window.learnToReadLanguage.language;
     let nameUppercase = false;
 
     function replaceNameSelection(text, backspace = false) {
@@ -813,7 +821,7 @@
     }
 
     const build = 'Build/';
-    const version = "1.86";
+    const version = "1.87";
     const versionKey = 'LearnToRead.WebVersion';
     const deviceResetKey = 'LearnToRead.DeviceReset';
     const launchParams = new URLSearchParams(location.search);
@@ -874,7 +882,7 @@
       if (launch.searchParams.get('v') === candidate) return false;
       launch.searchParams.set('v', candidate);
       statusPanel.hidden = false;
-      statusMessage.textContent = 'מוריד עדכון…';
+      statusMessage.textContent = t('מוריד עדכון…');
       loadingProgress.removeAttribute('value');
       location.replace(launch.href);
       return true;
@@ -892,12 +900,12 @@
       }
     }
 
-    let loadingTitle = 'טוענים את המשחק…';
+    let loadingTitle = t('טוענים את המשחק…');
     try {
       const previousVersion = localStorage.getItem(versionKey);
       const playedBeforeVersionTracking = !previousVersion && localStorage.getItem('LearnToRead.LoadingAvatar');
       if ((previousVersion && previousVersion !== version) || playedBeforeVersionTracking)
-        loadingTitle = 'מוריד עדכון…';
+        loadingTitle = t('מוריד עדכון…');
     } catch (error) {
       // A browser that blocks storage can still open the game.
     }
@@ -917,7 +925,7 @@
     const loader = document.createElement('script');
     loader.src = assetUrl('Web.loader.js');
     const showError = error => {
-      statusMessage.textContent = 'המשחק לא נטען. בדקו את החיבור לאינטרנט ונסו שוב.';
+      statusMessage.textContent = t('המשחק לא נטען. בדקו את החיבור לאינטרנט ונסו שוב.');
       loadingProgress.hidden = true;
       retry.hidden = false;
       console.error(error);
@@ -970,13 +978,13 @@
         if (confirm.disabled) return;
         if (!/^[0-9]{1,3}$/.test(answer.value) || Number(answer.value) !== expectedAnswer) {
           newQuestion();
-          feedback.textContent = 'התשובה לא מתאימה. נסו תרגיל חדש.';
+          feedback.textContent = t('התשובה לא מתאימה. נסו תרגיל חדש.');
           answer.focus();
           return;
         }
         cancel.disabled = confirm.disabled = true;
         answer.readOnly = true;
-        feedback.textContent = 'מאפסים את השמירה…';
+        feedback.textContent = t('מאפסים את השמירה…');
         try {
           // Confirm that the one-shot signal can be retained before deleting anything.
           sessionStorage.setItem(deviceResetKey, 'ready');
@@ -984,7 +992,7 @@
           sessionStorage.setItem(deviceResetKey, '1');
           openGame();
         } catch {
-          feedback.textContent = 'האיפוס לא הושלם. סגרו חלונות אחרים של המשחק ונסו שוב.';
+          feedback.textContent = t('האיפוס לא הושלם. סגרו חלונות אחרים של המשחק ונסו שוב.');
           cancel.disabled = confirm.disabled = false;
           answer.readOnly = false;
         }
@@ -1004,9 +1012,9 @@
       const candidate = await checkRelease();
       if (candidate && openRelease(candidate)) return;
       if (new URLSearchParams(location.search).has('pilot-report')) {
-        statusMessage.textContent = 'דוח הפיילוט של טולי טאון';
+        statusMessage.textContent = t('דוח הפיילוט של טולי טאון');
         loadingProgress.hidden = true;
-        retry.textContent = 'פתיחת המשחק';
+        retry.textContent = t('פתיחת המשחק');
         retry.hidden = false;
         retry.onclick = () => location.assign('./');
         return;

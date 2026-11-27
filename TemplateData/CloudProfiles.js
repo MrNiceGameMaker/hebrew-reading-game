@@ -1,5 +1,6 @@
 (() => {
   'use strict';
+  const t = window.learnToReadLanguage?.t ?? (value => value);
 
   const project = document.querySelector('meta[name="firebase-project-id"]')?.content.trim();
   const apiKey = document.querySelector('meta[name="firebase-web-api-key"]')?.content.trim();
@@ -276,7 +277,7 @@
   function updateStatus(message) {
     status = message;
     document.getElementById('cloud-status').textContent = storageFailures.size
-      ? 'אין אפשרות לשמור במכשיר. אפשר לפנות מקום ולנסות שוב'
+      ? t('אין אפשרות לשמור במכשיר. אפשר לפנות מקום ולנסות שוב')
       : message;
   }
   function refreshIfNeeded() {
@@ -307,12 +308,12 @@
       cache();
       refreshIfNeeded();
       if (!same(checkpoint, merged)) schedule();
-      else updateStatus(same(checkpoint, cached) ? 'שמירות המשחק מסונכרנות' : 'השינויים הבאים יישמרו בענן בסוף המשחקון');
+      else updateStatus(same(checkpoint, cached) ? t('שמירות המשחק מסונכרנות') : t('השינויים הבאים יישמרו בענן בסוף המשחקון'));
       return true;
     }).catch(error => {
       if (session !== account) return false;
       authRequired = needsLogin(error);
-      updateStatus(authRequired ? 'יש להתחבר מחדש כדי להמשיך לסנכרן' : 'השינויים שמורים כאן. ממתינים לחיבור לענן');
+      updateStatus(authRequired ? t('יש להתחבר מחדש כדי להמשיך לסנכרן') : t('השינויים שמורים כאן. ממתינים לחיבור לענן'));
       if (!authRequired) schedule(12000);
       return false;
     }).finally(() => { syncOperation = null; });
@@ -353,19 +354,19 @@
   function renderDialog() {
     form.hidden = !!session && !authRequired;
     signedIn.hidden = !form.hidden;
-    document.getElementById('cloud-account-name').textContent = session?.label ? 'מחובר לחשבון ' + session.label : '';
+    document.getElementById('cloud-account-name').textContent = session?.label ? t('מחובר לחשבון ') + session.label : '';
     document.getElementById('cloud-sync-now').hidden = reportOnly;
     document.getElementById('cloud-import-label').hidden = reportOnly || !anonymous?.profiles.length;
-    document.getElementById('cloud-identifier-label').textContent = emailMode ? 'כתובת דוא״ל' : 'שם משתמש';
+    document.getElementById('cloud-identifier-label').textContent = emailMode ? t('כתובת דוא״ל') : t('שם משתמש');
     identifier.type = emailMode ? 'email' : 'text';
     identifier.dir = emailMode ? 'ltr' : 'auto';
     document.getElementById('cloud-credential-hint').hidden = emailMode;
     document.getElementById('cloud-register').hidden = emailMode && !reportOnly;
-    document.getElementById('cloud-recovery').textContent = emailMode ? 'איפוס סיסמה בדוא״ל' : 'שכחנו את הסיסמה';
+    document.getElementById('cloud-recovery').textContent = emailMode ? t('איפוס סיסמה בדוא״ל') : t('שכחנו את הסיסמה');
     document.getElementById('cloud-recovery').hidden = !emailMode && !parent.available();
     document.getElementById('cloud-parent-add').hidden = reportOnly || !session?.username || !parent.available();
     legacy.hidden = reportOnly;
-    legacy.textContent = emailMode ? 'כניסה בשם משתמש' : 'יש לי חשבון עם דוא״ל';
+    legacy.textContent = emailMode ? t('כניסה בשם משתמש') : t('יש לי חשבון עם דוא״ל');
     updateStatus(status);
   }
 
@@ -391,12 +392,12 @@
     const label = identifier.value.trim();
     const username = emailMode ? '' : normalizeUsername(label);
     if (!emailMode && !validUsername(username)) {
-      updateStatus('בחרו שם משתמש באורך 3–24 תווים, עם אותיות או ספרות. אפשר גם מקף, נקודה וקו תחתון.');
+      updateStatus(t('בחרו שם משתמש באורך 3–24 תווים, עם אותיות או ספרות. אפשר גם מקף, נקודה וקו תחתון.'));
       identifier.focus();
       return;
     }
     if (!emailMode && registering && password.value.length < 8) {
-      updateStatus('בחרו סיסמה באורך שמונה תווים לפחות.');
+      updateStatus(t('בחרו סיסמה באורך שמונה תווים לפחות.'));
       password.focus();
       return;
     }
@@ -413,13 +414,13 @@
     let created = false;
     sending = true;
     submitButtons.forEach(control => { control.disabled = true; });
-    updateStatus(registering ? 'פותחים חשבון…' : 'מתחברים וטוענים שמירות…');
+    updateStatus(registering ? t('פותחים חשבון…') : t('מתחברים וטוענים שמירות…'));
     try {
       const credential = emailMode ? { email: label } : await parent.loginCredential(username);
       const email = credential.email;
       if (operation === 'recover') {
         await authenticate('sendOobCode', { requestType: 'PASSWORD_RESET', email });
-        updateStatus('אם קיים חשבון בכתובת הזו, יגיע אליו קישור לאיפוס הסיסמה.');
+        updateStatus(t('אם קיים חשבון בכתובת הזו, יגיע אליו קישור לאיפוס הסיסמה.'));
         return;
       }
       const login = await authenticate(registering ? 'signUp' : 'signInWithPassword', {
@@ -446,7 +447,7 @@
       cache();
       saveCheckpoint();
       write(sessionKey, account);
-      updateStatus(reportOnly ? 'מחוברים' : 'שמירות המשחק מסונכרנות');
+      updateStatus(reportOnly ? t('מחוברים') : t('שמירות המשחק מסונכרנות'));
       importCheckbox.checked = false;
       refreshPending = true;
       refreshGame?.();
@@ -454,20 +455,20 @@
       window.learnToReadPilot?.accountChanged();
     } catch (error) {
       if (operation === 'recover' && error.code === 'EMAIL_NOT_FOUND') {
-        updateStatus('אם קיים חשבון בכתובת הזו, יגיע אליו קישור לאיפוס הסיסמה.');
+        updateStatus(t('אם קיים חשבון בכתובת הזו, יגיע אליו קישור לאיפוס הסיסמה.'));
         return;
       }
       const messages = {
-        INVALID_LOGIN_CREDENTIALS: emailMode ? 'בדקו את כתובת הדוא״ל והסיסמה' : 'בדקו את שם המשתמש והסיסמה',
-        INVALID_PASSWORD: emailMode ? 'בדקו את כתובת הדוא״ל והסיסמה' : 'בדקו את שם המשתמש והסיסמה',
-        EMAIL_NOT_FOUND: emailMode ? 'בדקו את כתובת הדוא״ל והסיסמה' : 'בדקו את שם המשתמש והסיסמה',
-        EMAIL_EXISTS: emailMode ? 'הכתובת כבר רשומה. אפשר להתחבר או לאפס סיסמה' : 'שם המשתמש תפוס. אפשר להתחבר או לבחור שם אחר',
-        INVALID_EMAIL: emailMode ? 'בדקו את כתובת הדוא״ל' : 'לא הצלחנו להשתמש בשם המשתמש הזה',
-        WEAK_PASSWORD: 'בחרו סיסמה ארוכה יותר',
-        TOO_MANY_ATTEMPTS_TRY_LATER: 'ניסיונות רבים מדי. אפשר לנסות שוב מאוחר יותר'
+        INVALID_LOGIN_CREDENTIALS: emailMode ? t('בדקו את כתובת הדוא״ל והסיסמה') : t('בדקו את שם המשתמש והסיסמה'),
+        INVALID_PASSWORD: emailMode ? t('בדקו את כתובת הדוא״ל והסיסמה') : t('בדקו את שם המשתמש והסיסמה'),
+        EMAIL_NOT_FOUND: emailMode ? t('בדקו את כתובת הדוא״ל והסיסמה') : t('בדקו את שם המשתמש והסיסמה'),
+        EMAIL_EXISTS: emailMode ? t('הכתובת כבר רשומה. אפשר להתחבר או לאפס סיסמה') : t('שם המשתמש תפוס. אפשר להתחבר או לבחור שם אחר'),
+        INVALID_EMAIL: emailMode ? t('בדקו את כתובת הדוא״ל') : t('לא הצלחנו להשתמש בשם המשתמש הזה'),
+        WEAK_PASSWORD: t('בחרו סיסמה ארוכה יותר'),
+        TOO_MANY_ATTEMPTS_TRY_LATER: t('ניסיונות רבים מדי. אפשר לנסות שוב מאוחר יותר')
       };
-      updateStatus(created ? 'החשבון נוצר. התחברו שוב כדי לטעון את שמירות המשחק.'
-        : messages[error.code] || 'הפעולה לא הושלמה. אפשר לנסות שוב');
+      updateStatus(created ? t('החשבון נוצר. התחברו שוב כדי לטעון את שמירות המשחק.')
+        : messages[error.code] || t('הפעולה לא הושלמה. אפשר לנסות שוב'));
     } finally {
       sending = false;
       password.value = '';
@@ -516,7 +517,7 @@
       session = read(sessionKey, null);
       cached = session ? read(accountKey(session.id), empty()) : empty();
       checkpoint = session ? read(checkpointKey(session.id), empty()) : empty();
-      status = session ? 'בודקים את השמירה בענן…' : '';
+      status = session ? t('בודקים את השמירה בענן…') : '';
       if (session && !reportOnly) sync();
     }),
     clearDevice,
@@ -592,10 +593,10 @@
       cache();
       if (syncAtCheckpoint) {
         checkpointLocalChanges();
-        updateStatus('שומר בענן…');
+        updateStatus(t('שומר בענן…'));
         schedule();
       } else {
-        updateStatus('השינויים הבאים יישמרו בענן בסוף המשחקון');
+        updateStatus(t('השינויים הבאים יישמרו בענן בסוף המשחקון'));
       }
       return true;
     },

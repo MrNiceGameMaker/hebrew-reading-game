@@ -1,5 +1,6 @@
 (() => {
   'use strict';
+  const t = window.learnToReadLanguage?.t ?? (value => value);
 
   window.createParentRecovery = ({ project, apiKey, authenticate, request, dialog, usernameKey,
     userToken, renderDialog, getSession }) => {
@@ -119,12 +120,12 @@
       replacement.hidden = byId('parent-new-label').hidden = next !== 'reset';
       replacement.required = !replacement.hidden;
       byId('parent-submit').hidden = false;
-      byId('parent-back').textContent = 'חזרה';
+      byId('parent-back').textContent = t('חזרה');
       const content = {
-        add: ['דוא״ל לשחזור הסיסמה', 'הקלידו את כתובת הדוא״ל של ההורה ואת סיסמת החשבון. נשלח קישור לאישור הכתובת.', 'שליחת קישור אישור'],
-        request: ['שכחנו את הסיסמה', 'הקלידו את כתובת הדוא״ל שכבר אושרה בחשבון. נשלח קישור לבחירת סיסמה חדשה.', 'שליחת קישור איפוס'],
-        confirm: ['אישור דוא״ל ההורה', 'הקלידו את הכתובת שאליה הגיע הקישור כדי לחבר אותה לחשבון המשחק.', 'אישור כתובת'],
-        reset: ['בחירת סיסמה חדשה', 'הקלידו את הכתובת שאליה הגיע הקישור ובחרו סיסמה באורך שמונה תווים לפחות.', 'שמירת הסיסמה']
+        add: [t('דוא״ל לשחזור הסיסמה'), t('הקלידו את כתובת הדוא״ל של ההורה ואת סיסמת החשבון. נשלח קישור לאישור הכתובת.'), t('שליחת קישור אישור')],
+        request: [t('שכחנו את הסיסמה'), t('הקלידו את כתובת הדוא״ל שכבר אושרה בחשבון. נשלח קישור לבחירת סיסמה חדשה.'), t('שליחת קישור איפוס')],
+        confirm: [t('אישור דוא״ל ההורה'), t('הקלידו את הכתובת שאליה הגיע הקישור כדי לחבר אותה לחשבון המשחק.'), t('אישור כתובת')],
+        reset: [t('בחירת סיסמה חדשה'), t('הקלידו את הכתובת שאליה הגיע הקישור ובחרו סיסמה באורך שמונה תווים לפחות.'), t('שמירת הסיסמה')]
       }[next];
       [byId('title').textContent, byId('parent-hint').textContent, byId('parent-submit').textContent] = content;
       message.textContent = '';
@@ -136,7 +137,7 @@
       mode = '';
       form.reset();
       form.hidden = true;
-      byId('title').textContent = 'החשבון שלי';
+      byId('title').textContent = t('החשבון שלי');
       byId('status').hidden = false;
     }
 
@@ -169,8 +170,8 @@
         const recovery = await read(accessPath(account.id), await userToken(account));
         if (getSession() !== account) return;
         const text = [];
-        if (recovery?.email) text.push('דוא״ל לשחזור מאומת');
-        if (recovery?.pendingUntil > Date.now()) text.push('ממתינים לאישור הקישור שנשלח');
+        if (recovery?.email) text.push(t('דוא״ל לשחזור מאומת'));
+        if (recovery?.pendingUntil > Date.now()) text.push(t('ממתינים לאישור הקישור שנשלח'));
         target.textContent = text.join(' · ');
       } catch { /* Sign-in and synchronization remain available. */ }
     }
@@ -199,7 +200,7 @@
         ]);
       }
       await sendLink('confirm', credential.key, email);
-      return 'שלחנו קישור לאישור הכתובת. דוא״ל השחזור יופעל אחרי פתיחת הקישור ואישור הכתובת.';
+      return t('שלחנו קישור לאישור הכתובת. דוא״ל השחזור יופעל אחרי פתיחת הקישור ואישור הכתובת.');
     }
 
     async function useLink(email) {
@@ -216,7 +217,7 @@
         await commit(proof, [write(path, {
           username: link.key, owner: recovery.owner, email, pending: '', pendingUntil: 0
         }, { updateTime: recovery.version })]);
-        return 'הכתובת אושרה. מעכשיו אפשר לאפס דרכה את סיסמת המשחק.';
+        return t('הכתובת אושרה. מעכשיו אפשר לאפס דרכה את סיסמת המשחק.');
       }
       if (recovery.email !== email) throw new Error('Wrong recovery address');
       const generation = Array.from(crypto.getRandomValues(new Uint8Array(16)),
@@ -235,7 +236,7 @@
         write('usernameRoutes/' + link.key, { family: route.family, generation }, { updateTime: route.version }),
         { delete: database + '/documents/' + reset }
       ]);
-      return 'הסיסמה עודכנה. אפשר לחזור למשחק ולהיכנס עם אותו שם משתמש והסיסמה החדשה.';
+      return t('הסיסמה עודכנה. אפשר לחזור למשחק ולהיכנס עם אותו שם משתמש והסיסמה החדשה.');
     }
 
     byId('parent-add').onclick = () => open('add');
@@ -248,31 +249,31 @@
       if (busy || !mode) return;
       busy = true;
       byId('parent-submit').disabled = byId('parent-back').disabled = byId('close').disabled = true;
-      message.textContent = 'רגע, אנחנו מטפלים בזה…';
+      message.textContent = t('רגע, אנחנו מטפלים בזה…');
       const email = address.value.trim().toLowerCase();
       try {
         if (mode === 'add') message.textContent = await addAddress(email);
         else if (mode === 'request') {
           await sendLink('reset', await usernameKey(username), email);
-          message.textContent = 'אם הכתובת תואמת לדוא״ל שאושר בחשבון, אפשר לאפס את הסיסמה דרך הקישור.';
+          message.textContent = t('אם הכתובת תואמת לדוא״ל שאושר בחשבון, אפשר לאפס את הסיסמה דרך הקישור.');
         } else {
           message.textContent = await useLink(email);
           byId('parent-submit').hidden = true;
-          byId('parent-back').textContent = 'חזרה למשחק';
+          byId('parent-back').textContent = t('חזרה למשחק');
         }
       } catch (error) {
         const errors = {
-          INVALID_LOGIN_CREDENTIALS: 'הסיסמה הנוכחית אינה תואמת.',
-          INVALID_PASSWORD: 'הסיסמה הנוכחית אינה תואמת.',
-          INVALID_EMAIL: 'בדקו את כתובת הדוא״ל ונסו שוב.',
-          INVALID_OOB_CODE: 'הקישור אינו תקף. נסו לבקש קישור חדש.',
-          EXPIRED_OOB_CODE: 'תוקף הקישור פג. בקשו קישור חדש.',
-          TOO_MANY_ATTEMPTS_TRY_LATER: 'בוצעו ניסיונות רבים. נסו שוב מאוחר יותר.',
-          WEAK_PASSWORD: 'בחרו סיסמה ארוכה יותר.'
+          INVALID_LOGIN_CREDENTIALS: t('הסיסמה הנוכחית אינה תואמת.'),
+          INVALID_PASSWORD: t('הסיסמה הנוכחית אינה תואמת.'),
+          INVALID_EMAIL: t('בדקו את כתובת הדוא״ל ונסו שוב.'),
+          INVALID_OOB_CODE: t('הקישור אינו תקף. נסו לבקש קישור חדש.'),
+          EXPIRED_OOB_CODE: t('תוקף הקישור פג. בקשו קישור חדש.'),
+          TOO_MANY_ATTEMPTS_TRY_LATER: t('בוצעו ניסיונות רבים. נסו שוב מאוחר יותר.'),
+          WEAK_PASSWORD: t('בחרו סיסמה ארוכה יותר.')
         };
         message.textContent = errors[error.code] || (link
-          ? 'לא הצלחנו לאשר את הפעולה. ודאו שזו הכתובת המתאימה ובקשו קישור חדש לפי הצורך.'
-          : 'לא הצלחנו לשלוח קישור כרגע. אפשר לנסות שוב.');
+          ? t('לא הצלחנו לאשר את הפעולה. ודאו שזו הכתובת המתאימה ובקשו קישור חדש לפי הצורך.')
+          : t('לא הצלחנו לשלוח קישור כרגע. אפשר לנסות שוב.'));
       } finally {
         password.value = replacement.value = '';
         busy = false;
